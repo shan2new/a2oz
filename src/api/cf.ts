@@ -39,15 +39,25 @@ async function gate(): Promise<void> {
 
 type CfEnvelope<T> = { status: 'OK'; result: T } | { status: 'FAILED'; comment: string };
 
-async function call<T>(path: string): Promise<T> {
+async function call<T>(path: string, retry = 2): Promise<T> {
   await gate();
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`);
   } catch (e) {
+    if (retry > 0) {
+      await new Promise((r) => setTimeout(r, 800));
+      return call<T>(path, retry - 1);
+    }
     throw new CfNetworkError(String(e));
   }
-  if (res.status === 429 || res.status === 503) throw new CfRateLimited();
+  if (res.status === 429 || res.status === 503) {
+    if (retry > 0) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return call<T>(path, retry - 1);
+    }
+    throw new CfRateLimited();
+  }
   if (!res.ok) throw new CfNetworkError(`HTTP ${res.status}`);
   let body: CfEnvelope<T>;
   try {

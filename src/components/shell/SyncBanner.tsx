@@ -1,18 +1,74 @@
-// SyncBanner — shown at the top of <main> when syncStore.status === 'broken'.
-// Amber left border, pulsing dot, last-synced timestamp, and a retry button.
+// SyncBanner — shown at the top of <main> when something needs the user's
+// attention: an error from the last sync, an offline browser, or a stale
+// cache (> 24 h since the last successful sync).
 
-import { useSyncStore } from '@/store/syncStore';
+import { useEffect, useState } from 'react';
+import { useUserStore } from '@/store/userStore';
+
+const STALE_MS = 24 * 60 * 60 * 1000;
+
+function relativeFromNow(ms: number): string {
+  const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
 
 export function SyncBanner() {
-  const lastSyncedAgo = useSyncStore((s) => s.lastSyncedAgo);
-  const setStatus = useSyncStore((s) => s.setStatus);
+  const status = useUserStore((s) => s.status);
+  const error = useUserStore((s) => s.error);
+  const lastSyncedAt = useUserStore((s) => s.lastSyncedAt);
+  const handle = useUserStore((s) => s.handle);
+
+  const [online, setOnline] = useState(typeof navigator === 'undefined' || navigator.onLine);
+  useEffect(() => {
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  const isStale = !!lastSyncedAt && Date.now() - lastSyncedAt > STALE_MS;
+
+  let banner: { kind: 'error' | 'warn'; message: React.ReactNode; action?: React.ReactNode } | null =
+    null;
+
+  if (status === 'error' && error) {
+    banner = {
+      kind: 'error',
+      message: <>Sync failed — {error}</>,
+      action: handle ? (
+        <RetryButton tone="var(--ed-err)" onClick={() => useUserStore.getState().syncNow()} />
+      ) : null,
+    };
+  } else if (!online) {
+    banner = {
+      kind: 'warn',
+      message: <>Offline — showing cached data. Changes will sync when you're back online.</>,
+    };
+  } else if (handle && isStale) {
+    banner = {
+      kind: 'warn',
+      message: <>Cache is {relativeFromNow(lastSyncedAt!)} old.</>,
+      action: <RetryButton tone="var(--ed-pri)" onClick={() => useUserStore.getState().syncNow()} />,
+    };
+  }
+
+  if (!banner) return null;
+
+  const tone = banner.kind === 'error' ? 'var(--ed-err)' : 'var(--ed-warn)';
 
   return (
     <div
       style={{
-        background: 'color-mix(in oklab, var(--ed-warn) 12%, var(--ed-bg-1))',
-        borderBottom: '1px solid var(--ed-warn)',
-        borderLeft: '2px solid var(--ed-warn)',
+        background: `color-mix(in oklab, ${tone} 12%, var(--ed-bg-1))`,
+        borderBottom: `1px solid ${tone}`,
+        borderLeft: `2px solid ${tone}`,
         padding: '10px 40px',
         display: 'flex',
         alignItems: 'center',
@@ -21,41 +77,40 @@ export function SyncBanner() {
         fontFamily: "'DM Sans', system-ui, sans-serif",
       }}
     >
-      {/* Pulsing amber dot */}
       <span
         className="ed-pulse"
         style={{
           width: 6,
           height: 6,
           borderRadius: '50%',
-          background: 'var(--ed-warn)',
+          background: tone,
           flexShrink: 0,
         }}
       />
-
-      {/* Message */}
-      <span style={{ color: 'var(--ed-fg)', fontWeight: 500 }}>Sync failed</span>
-      <span style={{ color: 'var(--ed-fg-dim)' }}>
-        — last attempt {lastSyncedAgo}.{' '}
-        <button
-          onClick={() => setStatus('syncing')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--ed-pri)',
-            fontFamily: 'inherit',
-            fontSize: 'inherit',
-            fontWeight: 500,
-            cursor: 'pointer',
-            padding: 0,
-            textDecoration: 'underline',
-            textUnderlineOffset: 2,
-          }}
-        >
-          Retry
-        </button>
-        .
-      </span>
+      <span style={{ color: 'var(--ed-fg-dim)' }}>{banner.message}</span>
+      {banner.action}
     </div>
+  );
+}
+
+function RetryButton({ tone, onClick }: { tone: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: 'transparent',
+        border: 'none',
+        color: tone,
+        fontFamily: 'inherit',
+        fontSize: 'inherit',
+        fontWeight: 500,
+        cursor: 'pointer',
+        padding: 0,
+        textDecoration: 'underline',
+        textUnderlineOffset: 2,
+      }}
+    >
+      Retry
+    </button>
   );
 }

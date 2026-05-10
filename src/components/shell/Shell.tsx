@@ -4,13 +4,11 @@
 
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useSyncStore } from '@/store/syncStore';
 import { Sidebar } from './Sidebar';
 import { SyncBanner } from './SyncBanner';
 import { TweaksPanel } from '@/components/tweaks/TweaksPanel';
 
 export function Shell() {
-  const syncBroken = useSyncStore((s) => s.status === 'broken');
   const location = useLocation();
 
   return (
@@ -39,7 +37,7 @@ export function Shell() {
           flexDirection: 'column',
         }}
       >
-        {syncBroken && <SyncBanner />}
+        <SyncBanner />
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
