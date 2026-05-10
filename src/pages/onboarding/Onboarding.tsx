@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
 import { HandleInput } from './HandleInput';
@@ -11,62 +11,84 @@ export default function Onboarding() {
   const [stage, setStage] = useState<Stage>('input');
   const [handle, setHandle] = useState('');
   const navigate = useNavigate();
+  const status = useUserStore((s) => s.status);
+  const error = useUserStore((s) => s.error);
+  const profile = useUserStore((s) => s.profile);
 
-  const handleSubmit = () => {
-    if (!handle.trim()) return;
+  // Kick the real CF sync the moment we enter "connecting".
+  // ConnectingLog watches store progress and surfaces it; we move to "reveal"
+  // once the store reports an idle status with a profile in hand.
+  const onSubmit = () => {
+    const h = handle.trim();
+    if (!h) return;
     setStage('connecting');
+    void useUserStore.getState().setHandle(h).catch(() => {
+      // error surfaces via the store → ConnectingLog renders it
+    });
   };
 
-  const handleConnectComplete = () => {
-    setStage('reveal');
+  useEffect(() => {
+    if (stage === 'connecting' && status === 'idle' && profile) {
+      // Small beat after "ready." line lands.
+      const t = setTimeout(() => setStage('reveal'), 480);
+      return () => clearTimeout(t);
+    }
+  }, [stage, status, profile]);
+
+  const onRetry = () => {
+    setStage('input');
+    useUserStore.setState({ error: null, status: 'idle' });
   };
 
-  const handleEnter = () => {
-    useUserStore.getState().setHandle(handle.trim());
-    navigate('/');
-  };
+  const onEnter = () => navigate('/');
 
-  // Full-screen reveal takes over the entire layout
-  if (stage === 'reveal') {
+  if (stage === 'reveal' && profile) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'var(--ed-bg-0)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '48px 0',
-      }}>
-        <RevealHandle handle={handle.trim()} onEnter={handleEnter} />
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'var(--ed-bg-0)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '48px 0',
+        }}
+      >
+        <RevealHandle handle={profile.handle} onEnter={onEnter} />
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--ed-bg-0)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '48px 0',
-    }}>
-      {/* Stage 1: handle input */}
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'var(--ed-bg-0)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 0',
+      }}
+    >
       <HandleInput
         value={handle}
         onChange={setHandle}
-        onSubmit={handleSubmit}
+        onSubmit={onSubmit}
         disabled={stage === 'connecting'}
       />
 
-      {/* Stage 2: connecting log appears below the input */}
       {stage === 'connecting' && (
-        <div style={{ marginTop: 16, width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}>
-          <ConnectingLog
-            handle={handle.trim()}
-            onComplete={handleConnectComplete}
-          />
+        <div
+          style={{
+            marginTop: 16,
+            width: '100%',
+            maxWidth: 640,
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <ConnectingLog handle={handle.trim()} error={error} onRetry={onRetry} />
         </div>
       )}
     </div>

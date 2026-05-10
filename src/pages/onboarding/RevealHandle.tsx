@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCount } from '@/lib/useCountUp';
 import { ratingTone } from '@/lib/ratingTone';
-import { tierForRating, tierIndexForRating } from '@/lib/tiers';
-import { USER } from '@/data/user';
+import { tierForRating, tierIndexForRating, TIERS } from '@/lib/tiers';
+import { useUserStore } from '@/store/userStore';
 
 type RevealHandleProps = {
   handle: string;
@@ -80,26 +80,44 @@ export function RevealHandle({ handle, onEnter }: RevealHandleProps) {
     return () => ids.forEach(clearTimeout);
   }, []);
 
-  const TARGET_RATING = 1547;
-  const TARGET_MAX = 1602;
-  const TARGET_SOLVED = 412;
-  const TARGET_CONTESTS = 47;
-  const TARGET_STREAK = 13;
+  const u = useUserStore((s) => s.user);
+  const ratingHistory = useUserStore((s) => s.ratingHistory);
+
+  const TARGET_RATING = u?.rating ?? 0;
+  const TARGET_MAX = u?.maxRating ?? TARGET_RATING;
+  const TARGET_SOLVED = u?.solvedTotal ?? 0;
+  const TARGET_CONTESTS = u?.contests ?? 0;
+  const TARGET_STREAK = u?.streak ?? 0;
 
   const tone = ratingTone(TARGET_RATING);
   const tier = tierForRating(TARGET_RATING);
+  const tierIdx = tierIndexForRating(TARGET_RATING);
+  const nextTier = TIERS[tierIdx + 1];
+  const toNextTier = nextTier ? Math.max(0, nextTier.min - TARGET_RATING) : 0;
 
   const rating = useCount(TARGET_RATING, 1100, step >= 2);
   const solved = useCount(TARGET_SOLVED, 900, step >= 3);
   const contests = useCount(TARGET_CONTESTS, 800, step >= 3);
   const streak = useCount(TARGET_STREAK, 600, step >= 3);
 
-  // Sparkline data — use first 8 activity values as stand-in rating series
-  // The prototype uses explicit rating points; we use a deterministic demo series
-  const sparkPoints = [1488, 1495, 1480, 1510, 1502, 1520, 1531, 1547];
+  // Sparkline: take last 8 rating points if we have rating history, else
+  // synthesize from current rating.
+  const sparkPoints = (() => {
+    if (ratingHistory.length >= 2) {
+      const slice = ratingHistory.slice(-8);
+      return slice.map((p) => p.newRating);
+    }
+    return [TARGET_RATING - 30, TARGET_RATING - 12, TARGET_RATING - 18, TARGET_RATING];
+  })();
 
-  // Suppress "unused" warning — USER is imported for activity reference as noted in spec
-  void USER;
+  const recent7d = (() => {
+    if (ratingHistory.length < 2) return 0;
+    const last = ratingHistory[ratingHistory.length - 1];
+    const cutoff = last.ratingUpdateTimeSeconds - 7 * 86400;
+    const earlier = [...ratingHistory].reverse().find((p) => p.ratingUpdateTimeSeconds <= cutoff);
+    if (!earlier) return last.newRating - ratingHistory[0].newRating;
+    return last.newRating - earlier.newRating;
+  })();
 
   return (
     <div style={{
@@ -235,10 +253,11 @@ export function RevealHandle({ handle, onEnter }: RevealHandleProps) {
                     style={{
                       fontFamily: "'DM Mono', ui-monospace, monospace",
                       fontSize: 11,
-                      color: 'var(--ed-ok)',
+                      color: recent7d >= 0 ? 'var(--ed-ok)' : 'var(--ed-err)',
                     }}
                   >
-                    +47 in 7d
+                    {recent7d >= 0 ? '+' : ''}
+                    {recent7d} in 7d
                   </div>
                 ) : (
                   <Skel w={70} h={11} />
@@ -334,7 +353,9 @@ export function RevealHandle({ handle, onEnter }: RevealHandleProps) {
             color: 'var(--ed-fg-faint)',
             letterSpacing: 0.3,
           }}>
-            72 problems to expert
+            {nextTier
+              ? `${toNextTier} rating to ${nextTier.label.toLowerCase()}`
+              : 'top of the ladder'}
           </span>
         </div>
       )}
