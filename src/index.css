@@ -1,0 +1,272 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Tailwind v4 theme bridge — surfaces the editorial tokens as utilities so
+   Wave 1+ agents can write `bg-ed-bg-1`, `text-ed-fg-dim`, `text-ed-r-indigo`,
+   `font-display`, etc. The actual hex values live in the data-ed-theme blocks
+   below so the dark/light/density toggles drive everything via CSS vars.
+   ────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-ed-bg-0: var(--ed-bg-0);
+  --color-ed-bg-1: var(--ed-bg-1);
+  --color-ed-bg-2: var(--ed-bg-2);
+  --color-ed-bg-3: var(--ed-bg-3);
+  --color-ed-line: var(--ed-line);
+  --color-ed-line-soft: var(--ed-line-soft);
+  --color-ed-fg: var(--ed-fg);
+  --color-ed-fg-dim: var(--ed-fg-dim);
+  --color-ed-fg-mute: var(--ed-fg-mute);
+  --color-ed-fg-faint: var(--ed-fg-faint);
+  --color-ed-ok: var(--ed-ok);
+  --color-ed-warn: var(--ed-warn);
+  --color-ed-err: var(--ed-err);
+  --color-ed-pri: var(--ed-pri);
+  --color-ed-r-gray: var(--ed-r-gray);
+  --color-ed-r-sage: var(--ed-r-sage);
+  --color-ed-r-teal: var(--ed-r-teal);
+  --color-ed-r-indigo: var(--ed-r-indigo);
+  --color-ed-r-plum: var(--ed-r-plum);
+  --color-ed-r-amber: var(--ed-r-amber);
+  --color-ed-r-red: var(--ed-r-red);
+
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --font-display: 'Geist', system-ui, sans-serif;
+  --font-display-mono: 'Geist Mono', ui-monospace, monospace;
+  --font-serif: 'Instrument Serif', ui-serif, serif;
+}
+
+/* The dark variant fires when <html> carries data-ed-theme="dark". */
+@custom-variant dark (&:is([data-ed-theme="dark"], [data-ed-theme="dark"] *));
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Editorial design system tokens — ported verbatim from
+   design_handoff_a2oj/reference/A2OJ Reimagined.html  (<style> block).
+   The dark theme is the default. data-ed-theme on <html> swaps to light.
+   data-ed-density on <html> selects screen/row/panel/section spacing.
+   ────────────────────────────────────────────────────────────────────── */
+
+html, body { background: #0a0b0d; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #e6e7eb;
+  font-feature-settings: "ss01", "ss02", "cv11";
+}
+* { box-sizing: border-box; }
+
+/* Editorial app theme tokens — switchable via data-ed-theme on the app root */
+[data-ed-theme="dark"] {
+  --ed-bg-0:    #0e0f12;
+  --ed-bg-1:    #16181d;
+  --ed-bg-2:    #1d2027;
+  --ed-bg-3:    #262932;
+  --ed-line:    #23262e;
+  --ed-line-soft: #1b1e25;
+  --ed-fg:      #ecedf0;
+  --ed-fg-dim:  #a8acb6;
+  --ed-fg-mute: #6c7280;
+  --ed-fg-faint:#43464f;
+  --ed-r-gray:  #7a8090;
+  --ed-r-sage:  #88c096;
+  --ed-r-teal:  #5fb3b3;
+  --ed-r-indigo:#8095f0;
+  --ed-r-plum:  #bb86c8;
+  --ed-r-amber: #deaa6b;
+  --ed-r-red:   #e07a85;
+  --ed-ok:      #88c096;
+  --ed-warn:    #deaa6b;
+  --ed-err:     #e07a85;
+  --ed-pri:     #8095f0;
+  --ed-paper-tint: rgba(255,255,255,0.02);
+  --ed-glow:    0 1px 0 rgba(255,255,255,0.025);
+}
+[data-ed-theme="light"] {
+  --ed-bg-0:    #f6f3ec;
+  --ed-bg-1:    #ffffff;
+  --ed-bg-2:    #ece8de;
+  --ed-bg-3:    #ddd7c8;
+  --ed-line:    #e0dccf;
+  --ed-line-soft: #ece8de;
+  --ed-fg:      #14161b;
+  --ed-fg-dim:  #44464d;
+  --ed-fg-mute: #6c6e74;
+  --ed-fg-faint:#a09e94;
+  --ed-r-gray:  #717682;
+  --ed-r-sage:  #4d8a5e;
+  --ed-r-teal:  #2d8585;
+  --ed-r-indigo:#4a5fcf;
+  --ed-r-plum:  #8c50a0;
+  --ed-r-amber: #b07a2e;
+  --ed-r-red:   #b7444f;
+  --ed-ok:      #4d8a5e;
+  --ed-warn:    #b07a2e;
+  --ed-err:     #b7444f;
+  --ed-pri:     #4a5fcf;
+  --ed-paper-tint: rgba(0,0,0,0.015);
+  --ed-glow:    0 1px 0 rgba(255,255,255,0.6);
+}
+
+/* Density — affects screen padding + row padding via CSS vars */
+[data-ed-density="compact"]      { --ed-screen-pad: 22px 28px; --ed-row-pad: 8px 10px;  --ed-panel-pad: 14px 16px; --ed-section-gap: 16px; --ed-row-gap: 0px; }
+[data-ed-density="comfortable"]  { --ed-screen-pad: 36px 40px; --ed-row-pad: 12px 14px; --ed-panel-pad: 20px 22px; --ed-section-gap: 24px; --ed-row-gap: 2px; }
+[data-ed-density="roomy"]        { --ed-screen-pad: 48px 56px; --ed-row-pad: 16px 18px; --ed-panel-pad: 26px 30px; --ed-section-gap: 32px; --ed-row-gap: 6px; }
+
+/* Animations */
+@keyframes ed-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+@keyframes ed-fill  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ed-rise  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.ed-row { transition: background .12s ease, padding-left .15s ease; }
+.ed-row:hover { background: var(--ed-bg-1); padding-left: 18px; }
+.ed-card { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.ed-card:hover { transform: translateY(-2px); }
+.ed-fill > i { transform-origin: left; animation: ed-fill .9s cubic-bezier(.2,.7,.2,1); display: block; height: 100%; }
+.ed-pulse { animation: ed-pulse 2s ease-in-out infinite; }
+.ed-rise { animation: ed-rise .35s ease-out both; }
+
+/* Premium motion */
+@keyframes ed-spark { from { stroke-dashoffset: var(--len, 200); } to { stroke-dashoffset: 0; } }
+.ed-spark { stroke-dasharray: var(--len, 200); animation: ed-spark 1.4s cubic-bezier(.2,.7,.2,1) .15s both; }
+
+@keyframes ed-tick-up { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+.ed-tick > span { display: inline-block; animation: ed-tick-up .55s cubic-bezier(.2,.7,.2,1) both; }
+.ed-tick > span:nth-child(1) { animation-delay: 0.05s; }
+.ed-tick > span:nth-child(2) { animation-delay: 0.13s; }
+.ed-tick > span:nth-child(3) { animation-delay: 0.21s; }
+.ed-tick > span:nth-child(4) { animation-delay: 0.29s; }
+
+/* Hover reveals on rows */
+.ed-row .ed-reveal { opacity: 0; transform: translateX(-4px); transition: opacity .18s ease, transform .18s ease; }
+.ed-row:hover .ed-reveal { opacity: 1; transform: translateX(0); }
+
+/* Card hover — softer Apple-style lift */
+.ed-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -12px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04); }
+
+/* Cursor spotlight — Linear/Vercel signature move */
+.ed-spot { position: relative; isolation: isolate; }
+.ed-spot::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--spot, #fff) 14%, transparent), transparent 55%);
+  opacity: 0; transition: opacity .35s ease; z-index: 0; border-radius: inherit;
+}
+.ed-spot:hover::before { opacity: 1; }
+.ed-spot > * { position: relative; z-index: 1; }
+
+/* Staggered cascade — apply to a parent, children rise in order */
+@keyframes ed-cascade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.ed-cascade > * { animation: ed-cascade .5s cubic-bezier(.2,.7,.2,1) both; }
+.ed-cascade > *:nth-child(1) { animation-delay: 0.04s; }
+.ed-cascade > *:nth-child(2) { animation-delay: 0.10s; }
+.ed-cascade > *:nth-child(3) { animation-delay: 0.16s; }
+.ed-cascade > *:nth-child(4) { animation-delay: 0.22s; }
+.ed-cascade > *:nth-child(5) { animation-delay: 0.28s; }
+.ed-cascade > *:nth-child(6) { animation-delay: 0.34s; }
+.ed-cascade > *:nth-child(7) { animation-delay: 0.40s; }
+.ed-cascade > *:nth-child(8) { animation-delay: 0.46s; }
+
+/* Row chevron — appears on hover, glides in from the left */
+.ed-row .ed-chev { opacity: 0; transform: translateX(-4px); transition: opacity .2s ease, transform .25s cubic-bezier(.2,.7,.2,1); display: inline-block; }
+.ed-row:hover .ed-chev { opacity: 1; transform: translateX(0); }
+.ed-row { transition: padding-left .25s cubic-bezier(.2,.7,.2,1), background-color .2s ease; padding-left: 0; }
+.ed-row:hover { padding-left: 8px; background: color-mix(in oklab, var(--ed-fg) 3%, transparent); }
+
+/* Pulse refinement on live dot */
+@keyframes ed-breathe { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 5px transparent; opacity: .55; } }
+.ed-breathe { animation: ed-breathe 2.4s ease-out infinite; }
+
+/* Page transition — cross-fade + 4px rise on route change */
+@keyframes ed-page { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.ed-page { animation: ed-page .26s cubic-bezier(.2,.7,.2,1) both; }
+
+/* Mark-as-solved choreography */
+@keyframes ed-check-draw { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
+.ed-check path { stroke-dasharray: 14; animation: ed-check-draw .32s cubic-bezier(.65,.05,.36,1) both; }
+
+@keyframes ed-box-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.ed-box-pop { animation: ed-box-pop .42s cubic-bezier(.34,1.56,.64,1) both; }
+
+@keyframes ed-row-glow { 0% { background: color-mix(in oklab, var(--glow, #88c096) 0%, transparent); } 25% { background: color-mix(in oklab, var(--glow, #88c096) 14%, transparent); } 100% { background: color-mix(in oklab, var(--glow, #88c096) 0%, transparent); } }
+.ed-row-glow { animation: ed-row-glow .9s ease-out both; }
+
+@keyframes ed-strike { from { background-size: 0% 1px; } to { background-size: 100% 1px; } }
+.ed-strike-anim {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 60%;
+  background-size: 0% 1px;
+  animation: ed-strike .42s cubic-bezier(.2,.7,.2,1) .12s forwards;
+}
+
+@keyframes ed-confetti { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.6) rotate(var(--rot, 90deg)); } }
+.ed-confetti-piece { position: absolute; left: 50%; top: 50%; pointer-events: none; will-change: transform, opacity; animation: ed-confetti .85s cubic-bezier(.2,.7,.2,1) forwards; }
+
+/* Onboarding — typewriter dots, skeleton shimmer, number reveal */
+@keyframes ed-skel { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.ed-skel {
+  background: linear-gradient(90deg, var(--ed-bg-2) 0%, var(--ed-bg-3) 50%, var(--ed-bg-2) 100%);
+  background-size: 200% 100%;
+  animation: ed-skel 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+@keyframes ed-blur-in { from { opacity: 0; filter: blur(8px); transform: translateY(6px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
+.ed-blur-in { animation: ed-blur-in .55s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes ed-dot-blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.ed-dot-blink span { animation: ed-dot-blink 1.2s ease-in-out infinite; display: inline-block; }
+.ed-dot-blink span:nth-child(2) { animation-delay: .15s; }
+.ed-dot-blink span:nth-child(3) { animation-delay: .3s; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   shadcn/ui token shim — primitives reference these via the `theme(--color-*)`
+   helpers in shadcn/tailwind.css. We give them sensible mappings so generated
+   <Button>, <Input>, <Tabs>, etc. don't crash. Editorial pages should reach
+   for the `ed-*` utilities defined in @theme above; shadcn primitives are the
+   structural floor only.
+   ────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --radius: 0.5rem;
+  }
+
+  [data-ed-theme="dark"] {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+  }
+}
