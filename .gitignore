@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+design_handoff_a2oj
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
