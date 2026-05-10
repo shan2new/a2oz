@@ -1,17 +1,65 @@
-// Ported verbatim from design_handoff_a2oj/reference/data/problems.js (window.LADDERS).
-// 10 entries — do not reorder, ids are referenced by routes.
+// Real A2OJ ladders. The static JSON is loaded synchronously from
+// src/data/a2oj-ladders.json (output of scripts/scrape-a2oj.mjs); solved
+// counts are derived live from the user store.
 
-import type { Ladder } from '@/types';
+import { useMemo } from 'react';
+import { getA2ojLadders, problemKey } from '@/api/a2oj';
+import type { A2ojLadder, Ladder } from '@/types';
+import { useUserStore } from '@/store/userStore';
 
-export const LADDERS: Ladder[] = [
-  { id: 'l1',  range: '< 1300',     label: 'Newcomer',             total: 100, solved: 87, target: 'Pupil',            color: 'slate',   tier: 0 },
-  { id: 'l2',  range: '1300–1399',  label: 'Pupil',                total: 100, solved: 64, target: 'Specialist',       color: 'sage',    tier: 1 },
-  { id: 'l3',  range: '1400–1499',  label: 'Specialist I',         total: 100, solved: 41, target: 'Specialist+',      color: 'sage',    tier: 1 },
-  { id: 'l4',  range: '1500–1599',  label: 'Specialist II',        total: 100, solved: 28, target: 'Expert',           color: 'teal',    tier: 2 },
-  { id: 'l5',  range: '1600–1699',  label: 'Expert I',             total: 100, solved: 12, target: 'Expert+',          color: 'teal',    tier: 2 },
-  { id: 'l6',  range: '1700–1799',  label: 'Expert II',            total: 100, solved: 4,  target: 'Candidate Master', color: 'indigo',  tier: 3 },
-  { id: 'l7',  range: '1800–1899',  label: 'Candidate Master',     total: 100, solved: 0,  target: 'Master',           color: 'indigo',  tier: 3 },
-  { id: 'l8',  range: '1900–2099',  label: 'Master',               total: 100, solved: 0,  target: 'IM',               color: 'plum',    tier: 4 },
-  { id: 'l9',  range: '2100–2399',  label: 'International Master', total: 100, solved: 0,  target: 'Grandmaster',      color: 'amber',   tier: 5 },
-  { id: 'l10', range: '2400+',      label: 'Grandmaster',          total: 100, solved: 0,  target: 'LGM',              color: 'crimson', tier: 6 },
-];
+// Synchronous list of ladders WITHOUT solved counts (always 0). Useful
+// for places that need just the metadata (Ladders index, route guards).
+export const LADDERS: Ladder[] = getA2ojLadders().map(
+  (l): Ladder => ({
+    id: l.id,
+    tier: l.tier,
+    label: l.label,
+    range: l.range,
+    solved: 0,
+    total: l.total,
+    target: l.target,
+    kind: l.kind,
+  }),
+);
+
+// The full A2OJ shape (with `problems[]`) for callers that need to render
+// per-ladder problem lists.
+export function getRawLadders(): A2ojLadder[] {
+  return getA2ojLadders();
+}
+
+export function getRawLadder(id: string): A2ojLadder | undefined {
+  return getA2ojLadders().find((l) => l.id === id);
+}
+
+// Hook returning ladders with live `solved` counts derived from the user
+// store. Memoized; recomputes when solvedIds / localUnsolved change.
+export function useLadders(): Ladder[] {
+  const solvedIds = useUserStore((s) => s.solvedIds);
+  const localUnsolved = useUserStore((s) => s.localUnsolved);
+  return useMemo(() => {
+    const set0 = new Set(solvedIds);
+    for (const id of localUnsolved) set0.delete(id);
+    return getA2ojLadders().map((l): Ladder => {
+      let solved = 0;
+      for (const p of l.problems) {
+        if (set0.has(problemKey(p.contestId, p.index))) solved++;
+      }
+      return {
+        id: l.id,
+        tier: l.tier,
+        label: l.label,
+        range: l.range,
+        solved,
+        total: l.total,
+        target: l.target,
+        kind: l.kind,
+      };
+    });
+  }, [solvedIds, localUnsolved]);
+}
+
+export function useLadder(id: string | undefined): Ladder | null {
+  const list = useLadders();
+  return id ? list.find((l) => l.id === id) ?? null : null;
+}

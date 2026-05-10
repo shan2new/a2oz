@@ -1,72 +1,65 @@
-// Ported verbatim from design_handoff_a2oj/reference/data/problems.js (window.PROBLEMS).
-// 100 entries with deterministic LCG-seeded status & solver counts. Do NOT change
-// any of the magic numbers (2654435761, CONTEST_BASE 1700, multipliers 7/13/100/14000)
-// — Wave 1+ pages assume the byte-for-byte same dataset as the prototype.
+// Problem accessors. Joins A2OJ ladder problem refs with the cached CF
+// catalog (for tags/rating) and the user's solved set.
 
-import type { Problem, ProblemStatus } from '@/types';
+import { useMemo } from 'react';
+import { getA2ojLadders, problemKey } from '@/api/a2oj';
+import type { A2ojLadder, CfProblem, Problem } from '@/types';
+import { useUserStore } from '@/store/userStore';
+import { useCatalogStore } from '@/store/catalogStore';
 
-const TAGS: string[][] = [
-  ['dp', 'greedy'],
-  ['math', 'number theory'],
-  ['implementation', 'brute force'],
-  ['graphs', 'dfs and similar'],
-  ['strings', 'hashing'],
-  ['data structures', 'segment tree'],
-  ['binary search', 'sortings'],
-  ['constructive algorithms'],
-  ['two pointers', 'sortings'],
-  ['combinatorics', 'math'],
-  ['bitmasks', 'dp'],
-  ['trees', 'dp'],
-  ['shortest paths', 'dijkstra'],
-  ['greedy', 'sortings'],
-  ['math', 'probabilities'],
-];
-
-const NAMES: string[] = [
-  'Two Permutations', 'Median Knot', 'Walking on a Graph', 'Sorting by Subsequences', 'Brave Forest',
-  'String Reduction', 'Mike and Foam', 'Bear and Square Grid', 'Tournament Construction', 'Tree Generator',
-  'Count The Blocks', 'Yet Another Tournament', 'Magic Stones', 'Ancient Berland Roads', 'Multiset',
-  'Game with Strings', 'Gerald and Path', 'Chemistry in Berland', 'Inversion Counting', 'Maximum Submatrix',
-  'Subset Mex', 'Cards Partition', 'Polycarp Recovers a Sequence', 'Anya and 1100', 'Two Large Bags',
-  'Determine Winning Islands', 'Khayyam and the Seven Tomes', 'Meaning Mean', 'Shape Perimeter', 'Permutation',
-  'Make a Palindrome', 'Range = √Sum', 'Slimes', 'Numbers on a Board', 'Photographer Mishka',
-  'Replacement Operations', 'Restoration of String', 'Even Path', 'Bus to Udayland', 'Mike and Distribution',
-  'Berland Crossword', 'Maximize the Intersections', 'Equalize the Array', 'Erase and Extend', 'Mocha and Diana',
-  'Card Constructions', 'Equidistant Vertices', 'Coloring Trees', 'Frog Jumps', 'Yet Another Walking Robot',
-  'Berserk Robot', 'Sereja and Two Sequences', 'Plus and Square Root', 'Bear and Bowling 4', 'Kuroni and Antiunfairness',
-  'Restore Modulo', 'Petya and Construction', 'Nezzar and Tournaments', 'Multiplication Table', 'Valera and Tubes',
-  'Anya and Smartphone', 'Ralph and Dirty Paper', 'Catowice City', 'Fox and Card Game', 'Bus Game',
-  'Boboniu Walks on Graph', 'New Year Tree', 'Doe Graphs', 'Make a Power of Two', 'GCD Length',
-  'Prefix Enlightenment', 'Permutation Restoration', 'Round Marriage', 'Tree Painting', 'Binary Cards',
-  'Replicating Processes', 'XOR Construction', 'Counting Triangles', 'Fox and Names', 'Misha and XOR',
-  'Mike and Geometry', 'Trains and Statistic', 'Phoenix and Distribution', 'Vasya and Book', 'Pizza Reordered',
-  'Pleasant Pairs', 'Rotate Columns', 'Two Sets', 'Watering Flowers', 'XOR-pyramid',
-  'Yet Another Sorting', 'Zero Sequences', 'Almost Identity Permutations', 'Berries Distribution', 'Cellular Network',
-  'Dexterina', 'Easy Equation', 'Free Choice', 'Game of Life', "Hilbert's Hotel",
-];
-
-const CONTEST_BASE = 1700;
-
-export const PROBLEMS: Problem[] = NAMES.map((name, i) => {
-  const cid = CONTEST_BASE + (i * 7) % 380;
-  const letter = ['A', 'B', 'C', 'D', 'E', 'F'][i % 6];
-  const rating = 1500 + (((i * 13) % 10) * 10);
-  const tags = TAGS[i % TAGS.length];
-  // Deterministic Knuth-multiplicative hash → realistic spread of statuses.
-  const r = (i * 2654435761) >>> 0;
-  const status: ProblemStatus =
-    r % 100 < 28 ? 'solved' : r % 100 < 36 ? 'attempted' : 'unsolved';
-  const solvers = 800 + ((r >>> 7) % 14000);
+function adapt(
+  contestId: number,
+  index: string,
+  name: string,
+  cf: CfProblem | undefined,
+  isSolved: boolean,
+): Problem {
   return {
-    id: `${cid}${letter}`,
-    contestId: cid,
-    letter,
+    id: problemKey(contestId, index),
+    contestId,
+    letter: index,
     name,
-    rating,
-    tags,
-    status,
-    solvers,
-    href: `https://codeforces.com/problemset/problem/${cid}/${letter}`,
+    tags: cf?.tags ?? [],
+    rating: cf?.rating ?? 0,
+    solvers: 0,
+    status: isSolved ? 'solved' : 'unsolved',
+    href: `https://codeforces.com/problemset/problem/${contestId}/${index}`,
   };
-});
+}
+
+export function useProblemsForLadder(ladder: A2ojLadder | null): Problem[] {
+  const byId = useCatalogStore((s) => s.byId);
+  const solvedIds = useUserStore((s) => s.solvedIds);
+  const localUnsolved = useUserStore((s) => s.localUnsolved);
+  return useMemo(() => {
+    if (!ladder) return [];
+    const set0 = new Set(solvedIds);
+    for (const id of localUnsolved) set0.delete(id);
+    return ladder.problems.map((p) =>
+      adapt(p.contestId, p.index, p.name, byId.get(problemKey(p.contestId, p.index)), set0.has(problemKey(p.contestId, p.index))),
+    );
+  }, [ladder, byId, solvedIds, localUnsolved]);
+}
+
+// All problems across all ladders (deduplicated). Useful for Home "next up"
+// and global filters.
+export function useAllProblems(): Problem[] {
+  const byId = useCatalogStore((s) => s.byId);
+  const solvedIds = useUserStore((s) => s.solvedIds);
+  const localUnsolved = useUserStore((s) => s.localUnsolved);
+  return useMemo(() => {
+    const set0 = new Set(solvedIds);
+    for (const id of localUnsolved) set0.delete(id);
+    const seen = new Set<string>();
+    const out: Problem[] = [];
+    for (const l of getA2ojLadders()) {
+      for (const p of l.problems) {
+        const k = problemKey(p.contestId, p.index);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(adapt(p.contestId, p.index, p.name, byId.get(k), set0.has(k)));
+      }
+    }
+    return out;
+  }, [byId, solvedIds, localUnsolved]);
+}

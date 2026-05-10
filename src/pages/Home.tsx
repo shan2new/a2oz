@@ -5,27 +5,26 @@ import { Header } from '@/components/primitives/Header';
 import { ratingTone } from '@/lib/ratingTone';
 import { tierForRating } from '@/lib/tiers';
 import { useUserStore } from '@/store/userStore';
-import { LADDERS } from '@/data/ladders';
-import { PROBLEMS } from '@/data/problems';
-import { USER } from '@/data/user';
+import { useLadders, getRawLadder } from '@/data/ladders';
+import { useProblemsForLadder } from '@/data/problems';
 import type { Ladder } from '@/types';
 
-function parseRange(range: string): [number, number] {
-  const lt = range.match(/^<\s*(\d+)/);
-  if (lt) return [0, +lt[1] - 1];
-  const plus = range.match(/^(\d+)\+/);
-  if (plus) return [+plus[1], 9999];
-  const span = range.match(/(\d+)\D+(\d+)/);
-  if (span) return [+span[1], +span[2]];
-  return [0, 9999];
-}
-
-function pickActiveLadder(rating: number): Ladder {
-  const inRange = LADDERS.find((l) => {
-    const [lo, hi] = parseRange(l.range);
+function pickActiveLadder(rating: number, ladders: Ladder[]): Ladder {
+  // Prefer a non-extra rating-tier ladder whose range contains the user's
+  // rating. Fall back to the first incomplete one, then the first ladder.
+  const preferred = ladders.find((l) => {
+    if (l.kind !== 'rating') return false;
+    if (l.id.startsWith('ladder2') || l.id === 'ladder3' || l.id === 'ladder31' || l.id === 'ladder32') {
+      // Skip "extra" variants when picking a primary recommendation.
+      if (l.id !== 'ladder21') return false;
+    }
+    const m = l.range.match(/(\d+)/g);
+    if (!m) return false;
+    const lo = +m[0];
+    const hi = m[1] ? +m[1] : 9999;
     return rating >= lo && rating <= hi;
   });
-  return inRange ?? LADDERS.find((l) => l.solved < l.total) ?? LADDERS[0];
+  return preferred ?? ladders.find((l) => l.solved < l.total) ?? ladders[0];
 }
 
 // Cursor-spotlight style injection — targets .ed-spot-hero which is added inline
@@ -34,19 +33,19 @@ function pickActiveLadder(rating: number): Ladder {
 // The .ed-spot class in index.css handles the radial-gradient + opacity transition.
 
 export default function Home() {
-  const userRating = useUserStore.getState().user?.rating ?? USER.rating;
+  const user = useUserStore((s) => s.user);
+  const userRating = user?.rating ?? 1500;
   const tone = ratingTone(userRating);
 
-  // Pick the ladder whose range contains the user's current rating.
-  // Falls back to the first incomplete ladder, then to LADDERS[0].
-  const ladder = pickActiveLadder(userRating);
-  const pct = Math.round((ladder.solved / ladder.total) * 100);
+  const ladders = useLadders();
+  const ladder = pickActiveLadder(userRating, ladders);
+  const pct = ladder.total > 0 ? Math.round((ladder.solved / ladder.total) * 100) : 0;
 
-  // Unsolved problems — first 5
-  const nextUp = PROBLEMS.filter((p) => p.status !== 'solved').slice(0, 5);
+  const raw = getRawLadder(ladder.id) ?? null;
+  const ladderProblems = useProblemsForLadder(raw);
+  const nextUp = ladderProblems.filter((p) => p.status !== 'solved').slice(0, 5);
 
-  // Recent verdicts — all 5 from USER.recent (data has exactly 5)
-  const recent = USER.recent.slice(0, 6);
+  const recent = (user?.recent ?? []).slice(0, 6);
 
   // Page header eyebrow: current date
   const today = new Date().toLocaleDateString('en-US', {

@@ -31,6 +31,7 @@ import {
   clearHandle as idbClearHandle,
   type RecentVerdict,
 } from '@/storage/idb';
+import { useCatalogStore } from './catalogStore';
 
 // ── Derivation helpers ──────────────────────────────────────────────────────
 
@@ -215,6 +216,9 @@ export const useUserStore = create<State>()(
           if (!cached || Date.now() - cached.fetchedAt > STALE) {
             const problems = await getProblemCatalog();
             await saveCatalog(problems);
+            useCatalogStore.getState().set(problems);
+          } else if (useCatalogStore.getState().list.length === 0) {
+            useCatalogStore.getState().set(cached.problems);
           }
 
           onProgress({ phase: 'computing', loaded: 0, message: 'computing ladder progress' });

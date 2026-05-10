@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { LADDERS } from '@/data/ladders';
-import { PROBLEMS } from '@/data/problems';
+import { useLadder, getRawLadder } from '@/data/ladders';
+import { useProblemsForLadder } from '@/data/problems';
 import { TIERS } from '@/lib/tiers';
 import { Segmented } from '@/components/primitives/Segmented';
 import { ProblemRow } from '@/components/problem/ProblemRow';
-import { useUserStore } from '@/store/userStore';
 
 type FilterVal = 'all' | 'unsolved' | 'attempted' | 'solved';
 
@@ -15,54 +14,37 @@ function tierToneVar(tier: number): string {
   return t ? `var(${t.toneVar})` : 'var(--ed-r-gray)';
 }
 
-// NOTE: src/data/problems.ts only contains 100 problems for "Specialist II" (l4).
-// For all other ladders, we reuse the same 100 problems as a prototype stand-in.
-// This mirrors the reference prototype's single PROBLEMS array.
-
 export default function LadderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const ladder = LADDERS.find((l) => l.id === id);
-
-  const solvedIds = useUserStore((s) => s.solvedIds);
+  const ladder = useLadder(id);
+  const raw = useMemo(() => (id ? getRawLadder(id) ?? null : null), [id]);
+  const allProblems = useProblemsForLadder(raw);
 
   const [filter, setFilter] = useState<FilterVal>('all');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  // Problems: use PROBLEMS for all ladders (prototype behavior)
-  const allProblems = PROBLEMS;
-
-  // Compute effective solved status: merge store solvedIds with problem.status
-  const effectiveProblems = allProblems.map((p) => ({
-    ...p,
-    status: (
-      solvedIds.includes(p.id)
-        ? 'solved'
-        : p.status
-    ) as typeof p.status,
-  }));
-
   const stats = {
-    solved: effectiveProblems.filter((p) => p.status === 'solved').length,
-    attempted: effectiveProblems.filter((p) => p.status === 'attempted').length,
-    unsolved: effectiveProblems.filter((p) => p.status === 'unsolved').length,
+    solved: allProblems.filter((p) => p.status === 'solved').length,
+    attempted: allProblems.filter((p) => p.status === 'attempted').length,
+    unsolved: allProblems.filter((p) => p.status === 'unsolved').length,
   };
 
-  // Auto-navigate to complete when all solved
   useEffect(() => {
     if (!ladder) return;
-    if (stats.solved === ladder.total) {
+    if (stats.solved === ladder.total && ladder.total > 0) {
       navigate(`/ladders/${ladder.id}/complete`);
     }
   }, [stats.solved, ladder, navigate]);
 
-  // All unique tags (up to 10, matching prototype)
-  const allTags = [...new Set(allProblems.flatMap((p) => p.tags))].slice(0, 10);
+  const allTags = useMemo(
+    () => [...new Set(allProblems.flatMap((p) => p.tags))].slice(0, 10),
+    [allProblems],
+  );
 
-  // Filtered problems
-  const filtered = effectiveProblems.filter((p) => {
+  const filtered = allProblems.filter((p) => {
     if (filter !== 'all' && p.status !== filter) return false;
     if (activeTag && !p.tags.includes(activeTag)) return false;
     if (

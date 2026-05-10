@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { LADDERS } from '@/data/ladders';
+import { useLadders } from '@/data/ladders';
 import { TIERS } from '@/lib/tiers';
 import { Header } from '@/components/primitives/Header';
 
@@ -10,6 +10,7 @@ function tierToneVar(tier: number): string {
 }
 
 export default function Ladders() {
+  const ladders = useLadders();
   return (
     <div style={{ padding: 'var(--ed-screen-pad)' }}>
       <Header
@@ -25,7 +26,7 @@ export default function Ladders() {
           gap: 'var(--ed-section-gap)',
         }}
       >
-        {LADDERS.map((ladder) => {
+        {ladders.map((ladder) => {
           const tone = tierToneVar(ladder.tier);
           const pct = ladder.solved / ladder.total;
           const locked = ladder.solved === 0 && ladder.tier > 3;

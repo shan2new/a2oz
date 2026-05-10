@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import { Panel } from '@/components/primitives/Panel';
 import { Header } from '@/components/primitives/Header';
 import { Eyebrow } from '@/components/primitives/Eyebrow';
-import { USER } from '@/data/user';
-import { PROBLEMS } from '@/data/problems';
+import { useUserStore } from '@/store/userStore';
+import { useCatalogStore } from '@/store/catalogStore';
 
 const MONO = "'DM Mono', ui-monospace, monospace";
 const SANS = "'DM Sans', system-ui, sans-serif";
@@ -63,27 +64,34 @@ function heatColor(v: number): string {
   return 'var(--ed-r-teal)';
 }
 
-// ── Tag frequency from PROBLEMS ───────────────────────────────────────────
-function computeTopTags(n: number): { tag: string; count: number }[] {
-  const freq: Record<string, number> = {};
-  for (const p of PROBLEMS) {
-    if (p.status !== 'solved') continue;
-    for (const t of p.tags) {
-      freq[t] = (freq[t] ?? 0) + 1;
-    }
-  }
-  return Object.entries(freq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, n)
-    .map(([tag, count]) => ({ tag, count }));
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function Progress() {
-  const u = USER;
+  const user = useUserStore((s) => s.user);
+  const solvedIds = useUserStore((s) => s.solvedIds);
+  const localUnsolved = useUserStore((s) => s.localUnsolved);
+  const catalog = useCatalogStore((s) => s.byId);
+
+  const u = user ?? {
+    rating: 0, maxRating: 0, solvedTotal: 0, contests: 0, streak: 0,
+    activity: new Array(90).fill(0) as number[],
+  };
   const totalSolves = u.activity.reduce((a, b) => a + b, 0);
 
-  const topTags = computeTopTags(8);
+  // Top tags: derive from the user's accepted problems joined with the catalog.
+  const topTags = useMemo(() => {
+    const set0 = new Set(solvedIds);
+    for (const id of localUnsolved) set0.delete(id);
+    const freq: Record<string, number> = {};
+    for (const id of set0) {
+      const p = catalog.get(id);
+      if (!p) continue;
+      for (const t of p.tags) freq[t] = (freq[t] ?? 0) + 1;
+    }
+    return Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag, count]) => ({ tag, count }));
+  }, [solvedIds, localUnsolved, catalog]);
   const maxTagCount = topTags[0]?.count ?? 1;
 
   return (
