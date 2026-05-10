@@ -1,5 +1,108 @@
 // Shared types for A2OJ Reimagined.
-// All later waves import from here so the data shape stays stable.
+
+// ── Codeforces API response shapes ──────────────────────────────────────────
+// Only the fields we actually use are typed. CF occasionally adds new fields;
+// we ignore the rest.
+
+export type CfUser = {
+  handle: string;
+  rating: number;
+  maxRating: number;
+  rank: string;
+  maxRank: string;
+  registrationTimeSeconds: number;
+  avatar: string;
+  titlePhoto: string;
+};
+
+export type CfRatingPoint = {
+  contestId: number;
+  contestName: string;
+  rank: number;
+  ratingUpdateTimeSeconds: number;
+  oldRating: number;
+  newRating: number;
+};
+
+export type CfProblem = {
+  contestId: number;
+  index: string;
+  name: string;
+  rating?: number;
+  tags: string[];
+  type?: 'PROGRAMMING' | 'QUESTION';
+};
+
+export type CfSubmission = {
+  id: number;
+  creationTimeSeconds: number;
+  verdict?: string;
+  problem: { contestId?: number; index: string; name: string; rating?: number; tags: string[] };
+};
+
+// ── A2OJ ladders (output of scripts/scrape-a2oj.mjs) ────────────────────────
+
+export type A2ojProblemRef = {
+  contestId: number;
+  index: string;
+  name: string;
+};
+
+export type A2ojLadder = {
+  id: string;
+  slug: string;
+  kind: 'rating' | 'division';
+  label: string;
+  range: string;
+  ratingLo: number | null;
+  ratingHi: number | null;
+  tier: number;
+  target: string;
+  total: number;
+  problems: A2ojProblemRef[];
+};
+
+export type A2ojLaddersFile = {
+  scrapedAt: string;
+  source: string;
+  ladders: A2ojLadder[];
+};
+
+// ── Existing UI types kept for backwards compatibility ──────────────────────
+// `Ladder` and `Problem` are still consumed by the page components. The data
+// layer adapts CF + A2OJ data into these shapes.
+
+export type Ladder = {
+  id: string;
+  tier: number;
+  label: string;
+  range: string;
+  solved: number;
+  total: number;
+  target: string;
+  kind?: 'rating' | 'division';
+  color?: string;
+};
+
+export type ProblemStatus = 'unsolved' | 'attempted' | 'solved';
+
+export type Problem = {
+  id: string; // `${contestId}${index}` — the canonical CF display ID
+  contestId: number;
+  letter: string; // CF index ("A", "B1", etc.)
+  name: string;
+  tags: string[];
+  rating: number;
+  solvers: number;
+  status: ProblemStatus;
+  href: string;
+};
+
+export type Category = {
+  name: string;
+  count: number;
+  hot?: boolean;
+};
 
 export type RecentEntry = {
   problem: string;
@@ -8,46 +111,17 @@ export type RecentEntry = {
   rating?: number;
 };
 
+// Real, runtime user state (replaces the mock `User`).
 export type User = {
   handle: string;
   rating: number;
   maxRating: number;
   rank?: string;
+  avatar?: string;
+  joinedAgo?: string;
   solvedTotal: number;
   contests: number;
   streak: number;
-  joinedAgo?: string;
-  activity: number[]; // 90 entries, daily solve count
+  activity: number[]; // 90-day daily AC count
   recent: RecentEntry[];
-};
-
-export type Ladder = {
-  id: string; // 'l1' .. 'l10'
-  tier: number; // 0-indexed
-  label: string; // 'Pupil', 'Specialist I', etc.
-  range: string; // '1200–1299'
-  solved: number;
-  total: number; // typically 100
-  target: string; // next tier label, e.g. 'Specialist'
-  color?: string; // tone hint from the prototype dataset
-};
-
-export type ProblemStatus = 'unsolved' | 'attempted' | 'solved';
-
-export type Problem = {
-  id: string; // CF style: '1850A'
-  contestId?: number;
-  letter?: string;
-  name: string;
-  tags: string[];
-  rating: number;
-  solvers: number;
-  status: ProblemStatus;
-  href?: string;
-};
-
-export type Category = {
-  name: string;
-  count: number;
-  hot?: boolean;
 };
