@@ -325,28 +325,30 @@ export const useUserStore = create<State>()(
         },
 
         markSolved: (id: string) => {
-          // Remove from localUnsolved; if not in real solved, add to a local-solved overlay.
-          // For now we treat marks as identical to a real solve in `user.solvedTotal`.
-          const lu = get().localUnsolved.filter((x) => x !== id);
-          let solvedIds = get().solvedIds;
-          if (!solvedIds.includes(id)) solvedIds = [...solvedIds, id];
-          set({ localUnsolved: lu, solvedIds });
-          // recompute user with overrides applied
           const s = get();
-          const set0 = new Set(s.solvedIds);
-          for (const x of s.localUnsolved) set0.delete(x);
-          set({ user: adaptUser(s.profile, s.activity, s.recent, [...set0], s.ratingHistory) });
+          const localUnsolved = s.localUnsolved.filter((x) => x !== id);
+          const solvedIds = s.solvedIds.includes(id) ? s.solvedIds : [...s.solvedIds, id];
+          const effective = new Set(solvedIds);
+          for (const x of localUnsolved) effective.delete(x);
+          set({
+            localUnsolved,
+            solvedIds,
+            user: adaptUser(s.profile, s.activity, s.recent, [...effective], s.ratingHistory),
+          });
         },
         unmarkSolved: (id: string) => {
-          // Add to localUnsolved (overrides accepted) AND drop from local-solved overlay.
-          const lu = get().localUnsolved;
-          const next = lu.includes(id) ? lu : [...lu, id];
-          const solvedIds = get().solvedIds.filter((x) => x !== id);
-          set({ localUnsolved: next, solvedIds });
           const s = get();
-          const set0 = new Set(s.solvedIds);
-          for (const x of s.localUnsolved) set0.delete(x);
-          set({ user: adaptUser(s.profile, s.activity, s.recent, [...set0], s.ratingHistory) });
+          const localUnsolved = s.localUnsolved.includes(id)
+            ? s.localUnsolved
+            : [...s.localUnsolved, id];
+          const solvedIds = s.solvedIds.filter((x) => x !== id);
+          const effective = new Set(solvedIds);
+          for (const x of localUnsolved) effective.delete(x);
+          set({
+            localUnsolved,
+            solvedIds,
+            user: adaptUser(s.profile, s.activity, s.recent, [...effective], s.ratingHistory),
+          });
         },
 
         clearHandle: async () => {

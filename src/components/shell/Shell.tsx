@@ -1,16 +1,12 @@
 // Shell — top-level layout: 252px sidebar + scrolling main area.
-// SyncBanner mounts conditionally at the top of main when sync is broken.
-// AnimatePresence wraps the Outlet for fade+lift route transitions.
+// SyncBanner mounts conditionally at the top of main.
 
-import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { SyncBanner } from './SyncBanner';
 import { TweaksPanel } from '@/components/tweaks/TweaksPanel';
 
 export function Shell() {
-  const location = useLocation();
-
   return (
     <div
       data-ed-app
@@ -38,18 +34,9 @@ export function Shell() {
         }}
       >
         <SyncBanner />
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.26, ease: [0.2, 0.7, 0.2, 1] }}
-            style={{ flex: 1 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        <div style={{ flex: 1 }}>
+          <Outlet />
+        </div>
       </main>
 
       <TweaksPanel />

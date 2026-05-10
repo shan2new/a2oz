@@ -1,16 +1,50 @@
 import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
 import { useLadders } from '@/data/ladders';
-import { TIERS } from '@/lib/tiers';
+import { TIERS, tierToneVar } from '@/lib/tiers';
 import { Header } from '@/components/primitives/Header';
+import { Eyebrow } from '@/components/primitives/Eyebrow';
+import type { Ladder } from '@/types';
 
-// Map ladder tier index → CSS var for tone
-function tierToneVar(tier: number): string {
-  const t = TIERS[Math.min(tier, TIERS.length - 1)];
-  return t ? `var(${t.toneVar})` : 'var(--ed-r-gray)';
-}
+type Section = { key: string; label: string; tone: string; ladders: Ladder[] };
 
 export default function Ladders() {
   const ladders = useLadders();
+
+  const sections = useMemo<Section[]>(() => {
+    const ratingByTier = new Map<number, Ladder[]>();
+    const division: Ladder[] = [];
+    for (const l of ladders) {
+      if (l.kind === 'division') {
+        division.push(l);
+      } else {
+        const arr = ratingByTier.get(l.tier) ?? [];
+        arr.push(l);
+        ratingByTier.set(l.tier, arr);
+      }
+    }
+    const out: Section[] = [];
+    for (let i = 0; i < TIERS.length; i++) {
+      const arr = ratingByTier.get(i);
+      if (!arr || arr.length === 0) continue;
+      out.push({
+        key: `tier-${i}`,
+        label: TIERS[i].label,
+        tone: `var(${TIERS[i].toneVar})`,
+        ladders: arr,
+      });
+    }
+    if (division.length) {
+      out.push({
+        key: 'division',
+        label: 'Codeforces Division 2',
+        tone: 'var(--ed-fg-mute)',
+        ladders: division,
+      });
+    }
+    return out;
+  }, [ladders]);
+
   return (
     <div style={{ padding: 'var(--ed-screen-pad)' }}>
       <Header
@@ -19,19 +53,50 @@ export default function Ladders() {
         subtitle="Tier-by-tier walks through 800–2300+."
       />
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 'var(--ed-section-gap)',
-        }}
-      >
-        {ladders.map((ladder) => {
+      {sections.map((section, sIdx) => (
+        <div
+          key={section.key}
+          style={{ marginBottom: sIdx === sections.length - 1 ? 0 : 32 }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 14,
+              marginBottom: 14,
+            }}
+          >
+            <Eyebrow style={{ color: section.tone, marginBottom: 0 }}>
+              {section.label}
+            </Eyebrow>
+            <span
+              style={{
+                fontFamily: "'Geist Mono', ui-monospace, monospace",
+                fontSize: 10,
+                color: 'var(--ed-fg-faint)',
+                letterSpacing: 0.3,
+              }}
+            >
+              {section.ladders.length} ladder
+              {section.ladders.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 16,
+            }}
+          >
+            {section.ladders.map((ladder) => {
           const tone = tierToneVar(ladder.tier);
           const pct = ladder.solved / ladder.total;
           const locked = ladder.solved === 0 && ladder.tier > 3;
           const done = ladder.solved === ladder.total;
           const active = ladder.solved > 0 && ladder.solved < ladder.total;
+          const isExtra = ladder.extra ?? false;
+          const cleanLabel = ladder.label.replace(/\s*\(Extra\)\s*$/, '');
 
           const tierNumeral = (ladder.tier + 1).toString().padStart(2, '0');
 
@@ -46,8 +111,8 @@ export default function Ladders() {
                 style={{
                   background: 'var(--ed-bg-1)',
                   border: '1px solid var(--ed-line)',
-                  borderRadius: 18,
-                  padding: '26px 28px',
+                  borderRadius: 12,
+                  padding: '14px 16px',
                   cursor: locked ? 'not-allowed' : 'pointer',
                   opacity: locked ? 0.4 : 1,
                   position: 'relative',
@@ -61,8 +126,8 @@ export default function Ladders() {
                     position: 'absolute',
                     top: 0,
                     right: 0,
-                    width: 220,
-                    height: 220,
+                    width: 140,
+                    height: 140,
                     backgroundImage: `radial-gradient(circle at top right, color-mix(in oklab, ${tone} 14%, transparent), transparent 65%)`,
                     pointerEvents: 'none',
                   }}
@@ -72,12 +137,30 @@ export default function Ladders() {
                 <div
                   style={{
                     position: 'absolute',
-                    top: 22,
-                    right: 24,
+                    top: 12,
+                    right: 14,
                     display: 'flex',
                     gap: 6,
                   }}
                 >
+                  {isExtra && (
+                    <span
+                      title="Bonus deck — 200 additional problems for the same tier"
+                      style={{
+                        fontFamily: "'Geist Mono', ui-monospace, monospace",
+                        fontSize: 9.5,
+                        padding: '3px 9px',
+                        background: 'transparent',
+                        color: 'var(--ed-fg-mute)',
+                        border: '1px dashed var(--ed-line)',
+                        borderRadius: 999,
+                        letterSpacing: 0.6,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      bonus
+                    </span>
+                  )}
                   {done && (
                     <span
                       style={{
@@ -134,18 +217,18 @@ export default function Ladders() {
                     position: 'relative',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: 22,
+                    gap: 14,
                   }}
                 >
-                  {/* HUGE tier numeral */}
-                  <div style={{ flexShrink: 0, width: 84, textAlign: 'left' }}>
+                  {/* Tier numeral */}
+                  <div style={{ flexShrink: 0, width: 48, textAlign: 'left' }}>
                     <div
                       style={{
                         fontFamily: "'Geist Mono', ui-monospace, monospace",
                         fontWeight: 200,
-                        fontSize: 76,
+                        fontSize: 44,
                         color: tone,
-                        letterSpacing: -4,
+                        letterSpacing: -2,
                         lineHeight: 0.85,
                         fontFeatureSettings: '"tnum", "zero"',
                       }}
@@ -155,29 +238,35 @@ export default function Ladders() {
                   </div>
 
                   {/* Label + range + progress */}
-                  <div style={{ flex: 1, minWidth: 0, paddingTop: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                     <div
                       style={{
                         fontFamily: "'Geist', system-ui, sans-serif",
-                        fontSize: 20,
+                        fontSize: 14,
                         fontWeight: 500,
-                        letterSpacing: -0.5,
-                        marginBottom: 4,
+                        letterSpacing: -0.3,
+                        marginBottom: 2,
                         color: 'var(--ed-fg)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      {ladder.label}
+                      {cleanLabel}
                     </div>
                     <div
                       style={{
                         fontFamily: "'Geist Mono', ui-monospace, monospace",
-                        fontSize: 10.5,
+                        fontSize: 10,
                         color: 'var(--ed-fg-mute)',
                         letterSpacing: 0.2,
-                        marginBottom: 22,
+                        marginBottom: 12,
                       }}
                     >
                       {ladder.range}
+                      {isExtra && (
+                        <span style={{ color: 'var(--ed-fg-faint)' }}> · 200 bonus</span>
+                      )}
                     </div>
 
                     {/* Progress bar + count */}
@@ -185,14 +274,14 @@ export default function Ladders() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 14,
+                        gap: 10,
                       }}
                     >
                       <div
                         className="ed-fill"
                         style={{
                           flex: 1,
-                          height: 3,
+                          height: 2,
                           background: 'var(--ed-bg-2)',
                           borderRadius: 2,
                           overflow: 'hidden',
@@ -212,10 +301,10 @@ export default function Ladders() {
                       <span
                         style={{
                           fontFamily: "'Geist Mono', ui-monospace, monospace",
-                          fontSize: 11,
+                          fontSize: 10,
                           color: 'var(--ed-fg-dim)',
                           letterSpacing: 0.2,
-                          minWidth: 56,
+                          minWidth: 44,
                           textAlign: 'right',
                           fontFeatureSettings: '"tnum"',
                         }}
@@ -232,7 +321,9 @@ export default function Ladders() {
             </Link>
           );
         })}
-      </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

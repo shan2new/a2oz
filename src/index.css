@@ -117,8 +117,6 @@ body {
 @keyframes ed-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
 @keyframes ed-fill  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes ed-rise  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.ed-row { transition: background .12s ease, padding-left .15s ease; }
-.ed-row:hover { background: var(--ed-bg-1); padding-left: 18px; }
 .ed-card { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .ed-card:hover { transform: translateY(-2px); }
 .ed-fill > i { transform-origin: left; animation: ed-fill .9s cubic-bezier(.2,.7,.2,1); display: block; height: 100%; }
@@ -168,8 +166,8 @@ body {
 /* Row chevron — appears on hover, glides in from the left */
 .ed-row .ed-chev { opacity: 0; transform: translateX(-4px); transition: opacity .2s ease, transform .25s cubic-bezier(.2,.7,.2,1); display: inline-block; }
 .ed-row:hover .ed-chev { opacity: 1; transform: translateX(0); }
-.ed-row { transition: padding-left .25s cubic-bezier(.2,.7,.2,1), background-color .2s ease; padding-left: 0; }
-.ed-row:hover { padding-left: 8px; background: color-mix(in oklab, var(--ed-fg) 3%, transparent); }
+.ed-row { transition: background-color .2s ease; }
+.ed-row:hover { background: color-mix(in oklab, var(--ed-fg) 3%, transparent); }
 
 /* Pulse refinement on live dot */
 @keyframes ed-breathe { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 5px transparent; opacity: .55; } }

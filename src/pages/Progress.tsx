@@ -99,7 +99,11 @@ export default function Progress() {
       <Header
         eyebrow="Trajectory"
         title="Progress."
-        subtitle="What you've solved, when, and where you're strong."
+        subtitle={
+          user?.joinedAgo
+            ? `What you've solved, when, and where you're strong. Joined Codeforces ${user.joinedAgo} ago.`
+            : "What you've solved, when, and where you're strong."
+        }
       />
 
       {/* ── 5 Stat cards ── */}

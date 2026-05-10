@@ -52,10 +52,6 @@ export function ProblemRow({ problem, index }: ProblemRowProps) {
   }
 
   const indexLabel = (index + 1).toString().padStart(2, '0');
-  const solversDisplay =
-    problem.solvers > 1000
-      ? `${(problem.solvers / 1000).toFixed(1)}k`
-      : problem.solvers.toString();
 
   return (
     <div
@@ -63,13 +59,12 @@ export function ProblemRow({ problem, index }: ProblemRowProps) {
       style={
         {
           display: 'grid',
-          gridTemplateColumns: '32px 28px 80px 1fr 220px 80px 64px',
-          padding: 'var(--ed-row-pad)',
+          gridTemplateColumns: '32px 28px 80px minmax(220px, 1fr) minmax(280px, 1.4fr) 64px',
+          padding: '10px 10px',
           borderRadius: 8,
           gap: 14,
           alignItems: 'center',
           fontSize: 13.5,
-          cursor: 'pointer',
           position: 'relative',
           '--glow': tone,
         } as React.CSSProperties & { '--glow': string }
@@ -153,8 +148,11 @@ export function ProblemRow({ problem, index }: ProblemRowProps) {
         {problem.id}
       </span>
 
-      {/* Col 4: Problem name */}
-      <span
+      {/* Col 4: Problem name — opens the CF problem in a new tab */}
+      <a
+        href={problem.href}
+        target="_blank"
+        rel="noopener noreferrer"
         style={{
           color: solved ? 'var(--ed-fg-faint)' : 'var(--ed-fg)',
           overflow: 'hidden',
@@ -169,10 +167,17 @@ export function ProblemRow({ problem, index }: ProblemRowProps) {
           maxWidth: '100%',
           textDecoration: solved && !justSolved ? 'line-through' : 'none',
           textDecorationColor: 'var(--ed-fg-faint)',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          if (!solved) e.currentTarget.style.color = tone;
+        }}
+        onMouseLeave={(e) => {
+          if (!solved) e.currentTarget.style.color = 'var(--ed-fg)';
         }}
       >
         <span className={justSolved ? 'ed-strike-anim' : ''}>{problem.name}</span>
-      </span>
+      </a>
 
       {/* Col 5: Up to 2 tag chips */}
       <span style={{ display: 'flex', gap: 5, overflow: 'hidden' }}>
@@ -195,20 +200,7 @@ export function ProblemRow({ problem, index }: ProblemRowProps) {
         ))}
       </span>
 
-      {/* Col 6: Solver count */}
-      <span
-        style={{
-          color: 'var(--ed-fg-faint)',
-          fontFamily: "'DM Mono', ui-monospace, monospace",
-          fontSize: 10.5,
-          textAlign: 'right',
-          fontFeatureSettings: '"tnum"',
-        }}
-      >
-        {solversDisplay}
-      </span>
-
-      {/* Col 7: Rating */}
+      {/* Col 6: Rating */}
       <span
         style={{
           color: tone,

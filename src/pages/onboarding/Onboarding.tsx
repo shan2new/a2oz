@@ -84,8 +84,8 @@ export default function Onboarding() {
             marginTop: 16,
             width: '100%',
             maxWidth: 640,
-            display: 'flex',
-            justifyContent: 'center',
+            padding: '0 24px',
+            boxSizing: 'border-box',
           }}
         >
           <ConnectingLog handle={handle.trim()} error={error} onRetry={onRetry} />

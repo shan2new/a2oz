@@ -1,7 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Eyebrow } from '@/components/primitives/Eyebrow';
-import { Header } from '@/components/primitives/Header';
 import { ratingTone } from '@/lib/ratingTone';
 import { tierForRating } from '@/lib/tiers';
 import { useUserStore } from '@/store/userStore';
@@ -10,14 +9,10 @@ import { useProblemsForLadder } from '@/data/problems';
 import type { Ladder } from '@/types';
 
 function pickActiveLadder(rating: number, ladders: Ladder[]): Ladder {
-  // Prefer a non-extra rating-tier ladder whose range contains the user's
-  // rating. Fall back to the first incomplete one, then the first ladder.
+  // Prefer the standard rating-tier ladder whose range contains the user's
+  // rating. Fall back to the first incomplete ladder, then ladders[0].
   const preferred = ladders.find((l) => {
-    if (l.kind !== 'rating') return false;
-    if (l.id.startsWith('ladder2') || l.id === 'ladder3' || l.id === 'ladder31' || l.id === 'ladder32') {
-      // Skip "extra" variants when picking a primary recommendation.
-      if (l.id !== 'ladder21') return false;
-    }
+    if (l.kind !== 'rating' || l.extra) return false;
     const m = l.range.match(/(\d+)/g);
     if (!m) return false;
     const lo = +m[0];
@@ -26,11 +21,6 @@ function pickActiveLadder(rating: number, ladders: Ladder[]): Ladder {
   });
   return preferred ?? ladders.find((l) => l.solved < l.total) ?? ladders[0];
 }
-
-// Cursor-spotlight style injection — targets .ed-spot-hero which is added inline
-// on the hero Panel. The ::before overlay is already provided globally via .ed-spot,
-// but we apply --spot as a custom property pointing to the tier tone color.
-// The .ed-spot class in index.css handles the radial-gradient + opacity transition.
 
 export default function Home() {
   const user = useUserStore((s) => s.user);
@@ -41,18 +31,11 @@ export default function Home() {
   const ladder = pickActiveLadder(userRating, ladders);
   const pct = ladder.total > 0 ? Math.round((ladder.solved / ladder.total) * 100) : 0;
 
-  const raw = getRawLadder(ladder.id) ?? null;
+  const raw = useMemo(() => getRawLadder(ladder.id) ?? null, [ladder.id]);
   const ladderProblems = useProblemsForLadder(raw);
   const nextUp = ladderProblems.filter((p) => p.status !== 'solved').slice(0, 5);
 
   const recent = (user?.recent ?? []).slice(0, 6);
-
-  // Page header eyebrow: current date
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
 
   // Hero card mouse-move handler — updates --mx / --my CSS vars for spotlight
   const heroRef = useRef<HTMLDivElement>(null);
@@ -77,12 +60,6 @@ export default function Home() {
 
   return (
     <div style={{ padding: 'var(--ed-screen-pad)' }}>
-      {/* Page header */}
-      <Header
-        eyebrow={today}
-        title={`${userRating} · ${tierForRating(userRating).label}`}
-      />
-
       {/* ── Hero "Continue the climb" card ─────────────────────────────── */}
       <div
         ref={heroRef}
@@ -162,7 +139,7 @@ export default function Home() {
                   letterSpacing: '0.05em',
                 }}
               >
-                · {ladder.label} · {ladder.range}
+                · {tierForRating(userRating).label}
               </span>
             </div>
 
@@ -190,7 +167,7 @@ export default function Home() {
                 maxWidth: 420,
               }}
             >
-              {ladder.solved} / {ladder.total} solved · {pct}% to {ladder.target}
+              {ladder.solved} / {ladder.total} solved
             </div>
 
             {/* Progress bar */}
@@ -213,18 +190,32 @@ export default function Home() {
               </div>
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
+                  position: 'relative',
                   marginTop: 8,
+                  height: 14,
                   fontFamily: "'DM Mono', ui-monospace, monospace",
                   fontSize: 10.5,
                   color: 'var(--ed-fg-faint)',
                   letterSpacing: '0.03em',
                 }}
               >
-                <span>0</span>
-                <span style={{ color: tone }}>{ladder.solved} ✓</span>
-                <span>{ladder.total}</span>
+                <span style={{ position: 'absolute', left: 0, top: 0 }}>0</span>
+                <span
+                  style={{
+                    position: 'absolute',
+                    // clamp so the label doesn't slide off-bar at the extremes
+                    left: `clamp(2%, ${pct}%, 98%)`,
+                    top: 0,
+                    transform: 'translateX(-50%)',
+                    color: tone,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {ladder.solved} ✓
+                </span>
+                <span style={{ position: 'absolute', right: 0, top: 0 }}>
+                  {ladder.total}
+                </span>
               </div>
             </div>
 
@@ -297,12 +288,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Two-column quiet zone: Next up | Recent ─────────────────────── */}
+      {/* ── Two-column quiet zone: Next up | Recent ───────────────────────
+           Horizontal padding matches the hero card's inner padding so the
+           eyebrows + rows align with the card's content edges. */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1.5fr 1fr',
           gap: 'var(--ed-section-gap)',
+          padding: '0 32px',
         }}
       >
         {/* ── Left: Next up ────────────────────────────────────────────── */}
@@ -336,22 +330,31 @@ export default function Home() {
             {nextUp.map((p, i) => (
               <li
                 key={p.id}
-                className="ed-row"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '70px 1fr auto auto auto',
-                  padding: '13px 12px 13px 0',
-                  gap: 16,
-                  alignItems: 'center',
                   borderBottom:
                     i === nextUp.length - 1
                       ? 'none'
                       : '1px solid var(--ed-line-soft)',
-                  cursor: 'pointer',
-                  fontSize: 13.5,
-                  borderRadius: 6,
                 }}
               >
+                <a
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ed-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '70px 1fr auto auto auto',
+                    padding: '13px 12px 13px 0',
+                    gap: 16,
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    fontSize: 13.5,
+                    borderRadius: 6,
+                    color: 'inherit',
+                    textDecoration: 'none',
+                  }}
+                >
                 {/* Problem ID (mono mute) */}
                 <span
                   style={{
@@ -430,6 +433,7 @@ export default function Home() {
                 >
                   →
                 </span>
+                </a>
               </li>
             ))}
           </ul>
@@ -487,26 +491,30 @@ export default function Home() {
                   {r.problem}
                 </span>
 
-                {/* Verdict tag */}
+                {/* Verdict tag — fixed-width slot so badges line up across rows */}
                 <span
                   style={{
+                    width: 32,
+                    display: 'inline-flex',
+                    justifyContent: 'center',
                     fontFamily: "'DM Mono', ui-monospace, monospace",
                     fontSize: 10,
                     fontWeight: 500,
                     color: r.verdict === 'AC' ? 'var(--ed-ok)' : 'var(--ed-err)',
                     letterSpacing: '0.04em',
-                    padding: '1px 6px',
+                    padding: '1px 0',
                     borderRadius: 4,
                     background:
                       r.verdict === 'AC'
                         ? 'color-mix(in oklab, var(--ed-ok) 10%, transparent)'
                         : 'color-mix(in oklab, var(--ed-err) 10%, transparent)',
+                    flexShrink: 0,
                   }}
                 >
                   {r.verdict}
                 </span>
 
-                {/* Date (mono mute) */}
+                {/* Date — fixed-width right-aligned slot */}
                 <span
                   style={{
                     color: 'var(--ed-fg-faint)',
@@ -514,6 +522,9 @@ export default function Home() {
                     fontSize: 10.5,
                     letterSpacing: '0.02em',
                     flexShrink: 0,
+                    width: 60,
+                    textAlign: 'right',
+                    fontFeatureSettings: '"tnum"',
                   }}
                 >
                   {r.date}

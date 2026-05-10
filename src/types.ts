@@ -81,6 +81,8 @@ export type Ladder = {
   total: number;
   target: string;
   kind?: 'rating' | 'division';
+  /** True for A2OJ "extra" decks (200 bonus problems for the same tier). */
+  extra?: boolean;
   color?: string;
 };
 

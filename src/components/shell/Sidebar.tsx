@@ -5,9 +5,9 @@ import { NavLink } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
 import { useUiStore } from '@/store/uiStore';
 import { ratingTone } from '@/lib/ratingTone';
+import { relativeFromNow } from '@/lib/time';
 import { UserCard } from './UserCard';
 import { UserEmpty } from './UserEmpty';
-import { TierLadder } from './TierLadder';
 
 const GEIST = "'Geist', system-ui, sans-serif";
 const GMONO = "'Geist Mono', ui-monospace, monospace";
@@ -19,16 +19,9 @@ const NAV_ITEMS = [
   { label: 'Progress',   to: '/progress',   k: '⌘4' },
 ] as const;
 
-function relativeFromNow(ms: number): string {
-  const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
 export function Sidebar() {
   const user = useUserStore((s) => s.user);
+  const handle = useUserStore((s) => s.handle);
   const status = useUserStore((s) => s.status);
   const lastSyncedAt = useUserStore((s) => s.lastSyncedAt);
   const setTweaksOpen = useUiStore((s) => s.setTweaksOpen);
@@ -95,8 +88,39 @@ export function Sidebar() {
         </span>
       </div>
 
-      {/* User card */}
-      {user ? <UserCard /> : <UserEmpty />}
+      {/* While the persisted handle is rehydrating but the profile hasn't
+          landed yet, show a placeholder so the sidebar doesn't flash
+          "no handle linked". */}
+      {user ? (
+        <UserCard />
+      ) : handle ? (
+        <div style={{ padding: '4px 4px 8px' }}>
+          <div
+            style={{
+              fontFamily: GEIST,
+              fontWeight: 600,
+              fontSize: 15,
+              color: 'var(--ed-fg-mute)',
+              letterSpacing: -0.3,
+              lineHeight: 1.1,
+              marginBottom: 4,
+            }}
+          >
+            {handle}
+          </div>
+          <div
+            style={{
+              fontFamily: GMONO,
+              fontSize: 11,
+              color: 'var(--ed-fg-faint)',
+            }}
+          >
+            loading…
+          </div>
+        </div>
+      ) : (
+        <UserEmpty />
+      )}
 
       {/* Primary nav */}
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 26 }}>
@@ -172,9 +196,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      {/* Tier ladder — only when user exists */}
-      {user && <TierLadder rating={user.rating} />}
 
       {/* Footer */}
       <div

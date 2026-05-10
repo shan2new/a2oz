@@ -28,3 +28,9 @@ export function tierIndexForRating(r: number): number {
 export function tierForRating(r: number): Tier {
   return TIERS[tierIndexForRating(r)];
 }
+
+// `var(--ed-r-…)` for a tier index. Clamps out-of-range to the top tier.
+export function tierToneVar(tier: number): string {
+  const t = TIERS[Math.min(Math.max(tier, 0), TIERS.length - 1)];
+  return `var(${t.toneVar})`;
+}

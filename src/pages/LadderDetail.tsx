@@ -2,17 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLadder, getRawLadder } from '@/data/ladders';
 import { useProblemsForLadder } from '@/data/problems';
-import { TIERS } from '@/lib/tiers';
+import { TIERS, tierToneVar } from '@/lib/tiers';
 import { Segmented } from '@/components/primitives/Segmented';
 import { ProblemRow } from '@/components/problem/ProblemRow';
 
 type FilterVal = 'all' | 'unsolved' | 'attempted' | 'solved';
-
-// Map tier index → CSS var
-function tierToneVar(tier: number): string {
-  const t = TIERS[Math.min(tier, TIERS.length - 1)];
-  return t ? `var(${t.toneVar})` : 'var(--ed-r-gray)';
-}
 
 export default function LadderDetail() {
   const { id } = useParams<{ id: string }>();
@@ -78,8 +72,20 @@ export default function LadderDetail() {
   }
 
   const tone = tierToneVar(ladder.tier);
-  const tierNumeral = (ladder.tier + 1).toString().padStart(2, '0');
   const completionPct = Math.round((ladder.solved / ladder.total) * 100);
+
+  // Eyebrow above the title. For rating ladders, the title IS the range,
+  // so use the tier name + a "Standard / Extra" qualifier instead. For
+  // division ladders, surface the deck identifier.
+  const eyebrowLabel = (() => {
+    const tierName = TIERS[Math.min(ladder.tier, TIERS.length - 1)]?.label ?? '';
+    if (ladder.kind === 'division') {
+      return ladder.id.endsWith('_old')
+        ? 'Codeforces · Div 2 · Older'
+        : 'Codeforces · Div 2 · Updated';
+    }
+    return `${tierName} · ${ladder.extra ? 'Extra' : 'Standard'}`;
+  })();
 
   return (
     <div>
@@ -127,46 +133,17 @@ export default function LadderDetail() {
             ← All ladders
           </Link>
 
-          {/* Hero grid: numeral | info | stats */}
+          {/* Hero grid: info | stats */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'auto 1fr auto',
+              gridTemplateColumns: '1fr auto',
               gap: 32,
               alignItems: 'flex-start',
             }}
           >
-            {/* Tier numeral */}
-            <div>
-              <div
-                style={{
-                  fontFamily: "'DM Mono', ui-monospace, monospace",
-                  fontSize: 10.5,
-                  color: 'var(--ed-fg-faint)',
-                  letterSpacing: 1.5,
-                  textTransform: 'uppercase',
-                }}
-              >
-                Ladder
-              </div>
-              <div
-                style={{
-                  fontFamily: "'DM Sans', system-ui, sans-serif",
-                  fontSize: 120,
-                  fontWeight: 300,
-                  color: tone,
-                  letterSpacing: -5,
-                  lineHeight: 0.9,
-                  marginTop: 4,
-                  fontFeatureSettings: '"tnum", "zero"',
-                }}
-              >
-                {tierNumeral}
-              </div>
-            </div>
-
             {/* Label + range + description */}
-            <div style={{ paddingTop: 6 }}>
+            <div>
               <div
                 style={{
                   fontFamily: "'DM Mono', ui-monospace, monospace",
@@ -178,7 +155,7 @@ export default function LadderDetail() {
                   fontWeight: 500,
                 }}
               >
-                {ladder.range}
+                {eyebrowLabel}
               </div>
               <div
                 style={{
@@ -387,17 +364,17 @@ export default function LadderDetail() {
 
       {/* ── Problem table ────────────────────────────────────────────────── */}
       <div style={{ padding: '8px 40px 40px' }}>
-        {/* Column header row */}
+        {/* Column header row — must match ProblemRow grid + padding exactly. */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '32px 28px 80px 1fr 220px 80px 64px',
+            gridTemplateColumns: '32px 28px 80px minmax(220px, 1fr) minmax(280px, 1.4fr) 64px',
             padding: '6px 10px',
             gap: 14,
             marginBottom: 4,
           }}
         >
-          {['#', '', 'ID', 'Problem', 'Tags', 'Solvers', 'Rating'].map(
+          {(['#', ' ', 'ID', 'Problem', 'Tags', 'Rating'] as const).map(
             (col, i) => (
               <span
                 key={i}
@@ -407,8 +384,7 @@ export default function LadderDetail() {
                   color: 'var(--ed-fg-faint)',
                   letterSpacing: 1.5,
                   textTransform: 'uppercase',
-                  textAlign:
-                    i === 5 || i === 6 ? 'right' : 'left',
+                  textAlign: i === 5 ? 'right' : 'left',
                 }}
               >
                 {col}

@@ -44,7 +44,6 @@ export function ConnectingLog({ handle, error, onRetry }: ConnectingLogProps) {
       style={{
         width: '100%',
         maxWidth: 540,
-        margin: '0 24px',
         background: 'var(--ed-bg-1)',
         border: `1px solid ${isError ? 'var(--ed-err)' : 'var(--ed-line)'}`,
         borderRadius: 10,

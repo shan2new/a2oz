@@ -5,7 +5,7 @@ type HeaderProps = {
   /** Small mono uppercase caption above the title (optional). */
   eyebrow?: string;
   /** Page H1 — Geist 40px weight 500 letter-spacing -1.6. Required. */
-  title: string;
+  title: React.ReactNode;
   /** DM Sans 14px dim subtitle below the title (optional). */
   subtitle?: string;
   /** Optional right-slot content (e.g. search input, action button). */

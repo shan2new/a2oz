@@ -29,14 +29,15 @@ export function Eyebrow({ children, className, style }: EyebrowProps) {
         ...style,
       }}
     >
-      {/* decorative em-rule matching editorial-home.jsx prototype */}
+      {/* decorative em-rule — inherits the eyebrow color so tinted eyebrows
+          (e.g. Categories group headers) get a matching rule. */}
       <span
         style={{
           display: 'inline-block',
           width: 18,
           height: 1,
-          background: 'var(--ed-fg-faint)',
-          opacity: 0.7,
+          background: 'currentColor',
+          opacity: 0.6,
           flexShrink: 0,
         }}
         aria-hidden="true"
