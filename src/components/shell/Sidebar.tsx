@@ -1,16 +1,23 @@
-// Sidebar — 252px fixed column.
-// Wordmark → UserCard/UserEmpty → Nav → TierLadder → Footer.
-
-import { NavLink } from 'react-router-dom';
+import type { CSSProperties } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useUserStore } from '@/store/userStore';
 import { useUiStore } from '@/store/uiStore';
 import { ratingTone } from '@/lib/ratingTone';
+import { tierForRating } from '@/lib/tiers';
 import { relativeFromNow } from '@/lib/time';
-import { UserCard } from './UserCard';
-import { UserEmpty } from './UserEmpty';
+import { resyncNow, signOut } from '@/lib/userActions';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const GEIST = "'Geist', system-ui, sans-serif";
 const GMONO = "'Geist Mono', ui-monospace, monospace";
+
+type SyncStatus = 'idle' | 'syncing' | 'error';
+
+const STATUS_DOT: Record<SyncStatus, string> = {
+  syncing: 'var(--ed-warn)',
+  error: 'var(--ed-err)',
+  idle: 'var(--ed-ok)',
+};
 
 const NAV_ITEMS = [
   { label: 'Overview',   to: '/',           k: '⌘1' },
@@ -25,18 +32,15 @@ export function Sidebar() {
   const status = useUserStore((s) => s.status);
   const lastSyncedAt = useUserStore((s) => s.lastSyncedAt);
   const setTweaksOpen = useUiStore((s) => s.setTweaksOpen);
+  const navigate = useNavigate();
 
   const tone = user ? ratingTone(user.rating) : 'var(--ed-r-indigo)';
-
-  const dotColor =
-    status === 'syncing' ? 'var(--ed-warn)' :
-    status === 'error' ? 'var(--ed-err)' :
-    'var(--ed-ok)';
+  const dotColor = STATUS_DOT[status as SyncStatus];
   const statusLabel =
     status === 'syncing' ? 'syncing…' :
-    status === 'error' ? 'sync failed' :
-    lastSyncedAt ? `live · synced ${relativeFromNow(lastSyncedAt)}` :
-    'idle';
+    status === 'error'   ? 'sync failed' :
+    lastSyncedAt          ? `live · synced ${relativeFromNow(lastSyncedAt)}` :
+                            'idle';
 
   return (
     <aside
@@ -45,10 +49,8 @@ export function Sidebar() {
         borderRight: '1px solid var(--ed-line)',
         display: 'flex',
         flexDirection: 'column',
-        padding: '22px 18px 18px',
+        padding: '22px 18px 14px',
         position: 'relative',
-        // The sidebar is inside a grid column, so it naturally fills to full
-        // viewport height. No extra height declarations needed.
         minHeight: 0,
         overflow: 'hidden auto',
       }}
@@ -88,42 +90,8 @@ export function Sidebar() {
         </span>
       </div>
 
-      {/* While the persisted handle is rehydrating but the profile hasn't
-          landed yet, show a placeholder so the sidebar doesn't flash
-          "no handle linked". */}
-      {user ? (
-        <UserCard />
-      ) : handle ? (
-        <div style={{ padding: '4px 4px 8px' }}>
-          <div
-            style={{
-              fontFamily: GEIST,
-              fontWeight: 600,
-              fontSize: 15,
-              color: 'var(--ed-fg-mute)',
-              letterSpacing: -0.3,
-              lineHeight: 1.1,
-              marginBottom: 4,
-            }}
-          >
-            {handle}
-          </div>
-          <div
-            style={{
-              fontFamily: GMONO,
-              fontSize: 11,
-              color: 'var(--ed-fg-faint)',
-            }}
-          >
-            loading…
-          </div>
-        </div>
-      ) : (
-        <UserEmpty />
-      )}
-
       {/* Primary nav */}
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 26 }}>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div
           style={{
             fontFamily: GMONO,
@@ -166,7 +134,6 @@ export function Sidebar() {
           >
             {({ isActive }) => (
               <>
-                {/* 2px tier-toned left bar — protrudes 18px out of the sidebar column */}
                 {isActive && (
                   <span
                     style={{
@@ -197,65 +164,221 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
       <div
         style={{
           marginTop: 'auto',
-          paddingTop: 16,
+          paddingTop: 14,
           borderTop: '1px solid var(--ed-line)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <span
-            className="ed-breathe"
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="ed-profile-trigger"
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                padding: 8,
+                borderRadius: 10,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                transition: 'background .14s ease',
+              }}
+            >
+              <ProfileAvatar
+                avatar={user?.avatar}
+                handle={handle ?? ''}
+                tone={tone}
+              />
+              <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
+                <div
+                  style={{
+                    fontFamily: GEIST,
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    color: user ? tone : 'var(--ed-fg-mute)',
+                    letterSpacing: -0.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {handle ?? 'No handle'}
+                </div>
+                <div
+                  style={{
+                    fontFamily: GMONO,
+                    fontSize: 10,
+                    color: 'var(--ed-fg-mute)',
+                  }}
+                >
+                  {user
+                    ? tierForRating(user.rating).label.toLowerCase()
+                    : 'not linked'}
+                </div>
+              </div>
+              {/* Live status pip — visible at-a-glance even when popover closed */}
+              <span
+                className="ed-breathe"
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: dotColor,
+                  color: dotColor,
+                  flexShrink: 0,
+                  marginRight: 4,
+                }}
+                aria-label={statusLabel}
+              />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="start"
+            sideOffset={8}
             style={{
-              width: 5,
-              height: 5,
-              borderRadius: '50%',
-              background: dotColor,
-              color: dotColor,
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: GMONO,
-              fontSize: 10,
-              color: 'var(--ed-fg-mute)',
-              letterSpacing: 0.2,
+              width: 240,
+              padding: 6,
+              background: 'var(--ed-bg-1)',
+              border: '1px solid var(--ed-line)',
+              borderRadius: 10,
+              boxShadow: '0 8px 32px -12px rgba(0,0,0,0.5)',
             }}
           >
-            {statusLabel}
-          </span>
-        </div>
+            <div
+              style={{
+                padding: '10px 10px 12px',
+                borderBottom: '1px solid var(--ed-line)',
+                marginBottom: 4,
+                fontFamily: GMONO,
+                fontSize: 10.5,
+                color: 'var(--ed-fg-dim)',
+                letterSpacing: 0.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {statusLabel}
+            </div>
 
-        {/* Tweaks button */}
-        <button
-          onClick={() => setTweaksOpen(true)}
-          style={{
-            background: 'transparent',
-            border: '1px solid var(--ed-line)',
-            borderRadius: 6,
-            padding: '4px 10px',
-            fontFamily: GMONO,
-            fontSize: 10,
-            color: 'var(--ed-fg-mute)',
-            letterSpacing: 0.3,
-            cursor: 'pointer',
-            transition: 'border-color .14s ease, color .14s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--ed-fg-faint)';
-            e.currentTarget.style.color = 'var(--ed-fg-dim)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--ed-line)';
-            e.currentTarget.style.color = 'var(--ed-fg-mute)';
-          }}
-        >
-          Tweaks
-        </button>
+            {handle && (
+              <PopoverItem
+                onClick={resyncNow}
+                disabled={status === 'syncing'}
+                label={status === 'syncing' ? 'Syncing…' : 'Resync now'}
+              />
+            )}
+            <PopoverItem onClick={() => setTweaksOpen(true)} label="Tweaks" />
+            {handle && (
+              <PopoverItem
+                onClick={() => signOut(navigate)}
+                label="Sign out"
+                tone="var(--ed-err)"
+              />
+            )}
+            {!handle && (
+              <PopoverItem
+                onClick={() => navigate('/onboarding')}
+                label="Link a handle"
+                tone="var(--ed-pri)"
+              />
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
     </aside>
+  );
+}
+
+const AVATAR_BASE: CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  background: 'var(--ed-bg-2)',
+  flexShrink: 0,
+};
+
+function ProfileAvatar({
+  avatar,
+  handle,
+  tone,
+}: {
+  avatar?: string;
+  handle: string;
+  tone: string;
+}) {
+  if (avatar) {
+    return (
+      <img
+        src={avatar}
+        alt={handle}
+        width={32}
+        height={32}
+        style={{
+          ...AVATAR_BASE,
+          objectFit: 'cover',
+          border: `1.5px solid ${tone}`,
+        }}
+      />
+    );
+  }
+  const accent = handle ? tone : 'var(--ed-fg-faint)';
+  return (
+    <div
+      style={{
+        ...AVATAR_BASE,
+        border: `1.5px solid ${handle ? tone : 'var(--ed-line)'}`,
+        display: 'grid',
+        placeItems: 'center',
+        color: accent,
+        fontFamily: GEIST,
+        fontWeight: 600,
+        fontSize: 13,
+      }}
+    >
+      {handle ? handle[0]?.toUpperCase() : '?'}
+    </div>
+  );
+}
+
+function PopoverItem({
+  label,
+  onClick,
+  disabled,
+  tone,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="ed-popover-item"
+      style={{
+        width: '100%',
+        background: 'transparent',
+        border: 'none',
+        padding: '8px 10px',
+        borderRadius: 6,
+        textAlign: 'left',
+        fontFamily: GEIST,
+        fontSize: 13,
+        color: tone ?? 'var(--ed-fg)',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.55 : 1,
+      }}
+    >
+      {label}
+    </button>
   );
 }

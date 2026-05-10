@@ -19,6 +19,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import type { Theme, Density } from '@/store/settingsStore';
 import { useUserStore } from '@/store/userStore';
 import { relativeFromNow } from '@/lib/time';
+import { resyncNow, signOut } from '@/lib/userActions';
 
 // ── Pill button used for Theme and Density choices ──────────────────────────
 
@@ -105,14 +106,9 @@ export function TweaksPanel() {
     setDensity('comfortable');
   };
 
-  const onResync = async () => {
-    await useUserStore.getState().syncNow().catch(() => {});
-  };
-
   const onSignOut = async () => {
-    await useUserStore.getState().clearHandle();
     setOpen(false);
-    navigate('/onboarding');
+    await signOut(navigate);
   };
 
   const lastSyncedLabel = lastSyncedAt ? relativeFromNow(lastSyncedAt) : 'never';
@@ -240,7 +236,7 @@ export function TweaksPanel() {
                 last synced · {lastSyncedLabel}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                <Pill active={false} onClick={onResync}>
+                <Pill active={false} onClick={resyncNow}>
                   {status === 'syncing' ? 'syncing…' : 'Resync'}
                 </Pill>
                 <Pill active={false} onClick={onSignOut}>

@@ -169,6 +169,10 @@ body {
 .ed-row { transition: background-color .2s ease; }
 .ed-row:hover { background: color-mix(in oklab, var(--ed-fg) 3%, transparent); }
 
+.ed-profile-trigger:hover { background: var(--ed-bg-1); }
+.ed-popover-item { transition: background .12s ease; }
+.ed-popover-item:hover:not(:disabled) { background: var(--ed-bg-2); }
+
 /* Pulse refinement on live dot */
 @keyframes ed-breathe { 0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 5px transparent; opacity: .55; } }
 .ed-breathe { animation: ed-breathe 2.4s ease-out infinite; }

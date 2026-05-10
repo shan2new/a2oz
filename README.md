@@ -1,73 +1,32 @@
-# React + TypeScript + Vite
+# A2OJ Reimagined
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An editorial, dark-first dashboard for tracking Codeforces ladder progress. Pulls real Codeforces data via the public API and overlays it on the curated A2OJ ladders (32 decks, 4,297 problems).
 
-Currently, two official plugins are available:
+- **Stack** — Vite + React + TypeScript, Tailwind v4, shadcn/ui, Zustand, IndexedDB (`idb-keyval`).
+- **Data** — A2OJ ladders are scraped once into `src/data/a2oj-ladders.json`; user profile + submissions + rating history come live from the Codeforces API and are cached to IndexedDB.
+- **No backend** — direct browser calls to `codeforces.com/api/*` (CORS-enabled, public).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Develop
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+## Re-scrape A2OJ ladders
+
+```bash
+node scripts/scrape-a2oj.mjs
+```
+
+Writes `src/data/a2oj-ladders.json`. Rerun whenever A2OJ updates upstream.
+
+## Deploy
+
+Vercel: zero config. The bundled `vercel.json` rewrites all paths to `index.html` so React Router deep links work.
