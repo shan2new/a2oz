@@ -13,9 +13,21 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { useNavigate } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Theme, Density } from '@/store/settingsStore';
+import { useUserStore } from '@/store/userStore';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function relativeFromNow(ms: number): string {
+  const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
 
 // ── Pill button used for Theme and Density choices ──────────────────────────
 
@@ -92,10 +104,27 @@ export function TweaksPanel() {
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setDensity = useSettingsStore((s) => s.setDensity);
 
+  const handle = useUserStore((s) => s.handle);
+  const status = useUserStore((s) => s.status);
+  const lastSyncedAt = useUserStore((s) => s.lastSyncedAt);
+  const navigate = useNavigate();
+
   const resetDefaults = () => {
     setTheme('dark');
     setDensity('comfortable');
   };
+
+  const onResync = async () => {
+    await useUserStore.getState().syncNow().catch(() => {});
+  };
+
+  const onSignOut = async () => {
+    await useUserStore.getState().clearHandle();
+    setOpen(false);
+    navigate('/onboarding');
+  };
+
+  const lastSyncedLabel = lastSyncedAt ? relativeFromNow(lastSyncedAt) : 'never';
 
   const themeOptions: { value: Theme; label: string }[] = [
     { value: 'dark', label: 'Dark' },
@@ -201,6 +230,34 @@ export function TweaksPanel() {
 
           {/* Divider */}
           <div style={{ height: 1, background: 'var(--ed-line)' }} aria-hidden="true" />
+
+          {/* Account section */}
+          {handle && (
+            <div>
+              <SectionLabel>Account</SectionLabel>
+              <div
+                style={{
+                  fontFamily: "'DM Mono', ui-monospace, monospace",
+                  fontSize: 11,
+                  color: 'var(--ed-fg-dim)',
+                  marginBottom: 12,
+                  letterSpacing: 0.2,
+                }}
+              >
+                linked as <span style={{ color: 'var(--ed-fg)' }}>{handle}</span>
+                <br />
+                last synced · {lastSyncedLabel}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                <Pill active={false} onClick={onResync}>
+                  {status === 'syncing' ? 'syncing…' : 'Resync'}
+                </Pill>
+                <Pill active={false} onClick={onSignOut}>
+                  Sign out
+                </Pill>
+              </div>
+            </div>
+          )}
 
           {/* Info note */}
           <div

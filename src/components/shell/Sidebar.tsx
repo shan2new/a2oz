@@ -19,12 +19,31 @@ const NAV_ITEMS = [
   { label: 'Progress',   to: '/progress',   k: '⌘4' },
 ] as const;
 
+function relativeFromNow(ms: number): string {
+  const diff = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 export function Sidebar() {
   const user = useUserStore((s) => s.user);
+  const status = useUserStore((s) => s.status);
+  const lastSyncedAt = useUserStore((s) => s.lastSyncedAt);
   const setTweaksOpen = useUiStore((s) => s.setTweaksOpen);
 
-  // Tier tone for active nav indicator; default to indigo when no user
   const tone = user ? ratingTone(user.rating) : 'var(--ed-r-indigo)';
+
+  const dotColor =
+    status === 'syncing' ? 'var(--ed-warn)' :
+    status === 'error' ? 'var(--ed-err)' :
+    'var(--ed-ok)';
+  const statusLabel =
+    status === 'syncing' ? 'syncing…' :
+    status === 'error' ? 'sync failed' :
+    lastSyncedAt ? `live · synced ${relativeFromNow(lastSyncedAt)}` :
+    'idle';
 
   return (
     <aside
@@ -172,8 +191,8 @@ export function Sidebar() {
               width: 5,
               height: 5,
               borderRadius: '50%',
-              background: 'var(--ed-ok)',
-              color: 'var(--ed-ok)',
+              background: dotColor,
+              color: dotColor,
               flexShrink: 0,
             }}
           />
@@ -185,7 +204,7 @@ export function Sidebar() {
               letterSpacing: 0.2,
             }}
           >
-            live · synced 2m ago
+            {statusLabel}
           </span>
         </div>
 
