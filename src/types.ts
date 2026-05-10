@@ -1,4 +1,4 @@
-// Shared types for A2OJ Reimagined.
+// Shared types for A2OZ Reimagined.
 
 // ── Codeforces API response shapes ──────────────────────────────────────────
 // Only the fields we actually use are typed. CF occasionally adds new fields;

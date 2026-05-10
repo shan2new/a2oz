@@ -1,4 +1,4 @@
-# A2OJ Reimagined
+# A2OZ Reimagined
 
 An editorial, dark-first dashboard for tracking Codeforces ladder progress. Pulls real Codeforces data via the public API and overlays it on the curated A2OJ ladders (32 decks, 4,297 problems).
 

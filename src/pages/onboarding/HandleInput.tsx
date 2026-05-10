@@ -62,7 +62,7 @@ export function HandleInput({ value, onChange, onSubmit, disabled }: HandleInput
         marginBottom: 32,
         fontFamily: "'DM Sans', system-ui, sans-serif",
       }}>
-        A2OJ pulls your solved set, contests, and rating directly from Codeforces. No password — only your handle.
+        A2OZ pulls your solved set, contests, and rating directly from Codeforces. No password — only your handle.
       </div>
 
       {/* Input card */}

@@ -345,7 +345,7 @@ export function RevealHandle({ handle, onEnter }: RevealHandleProps) {
               letterSpacing: -0.1,
             }}
           >
-            Enter A2OJ →
+            Enter A2OZ →
           </button>
           <span style={{
             fontFamily: "'DM Mono', ui-monospace, monospace",
