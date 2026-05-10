@@ -14,6 +14,8 @@ interface TierLadderProps {
 
 export function TierLadder({ rating }: TierLadderProps) {
   const curIdx = tierIndexForRating(rating);
+  const curTier = TIERS[curIdx];
+  const tierRange = curTier.max >= 9000 ? `${curTier.min}+` : `${curTier.min}–${curTier.max}`;
 
   return (
     <div style={{ marginTop: 26, padding: '0 4px' }}>
@@ -38,11 +40,11 @@ export function TierLadder({ rating }: TierLadderProps) {
         <span
           style={{
             position: 'absolute',
-            left: 9.5,
-            top: 8,
-            bottom: 8,
+            left: 14.5,
+            top: 12,
+            bottom: 12,
             width: 1,
-            background: 'var(--ed-fg-faint)',
+            background: 'var(--ed-line)',
           }}
         />
 
@@ -98,7 +100,7 @@ export function TierLadder({ rating }: TierLadderProps) {
                 {tier.key === 'cm' ? 'cand. master' : tier.key === 'gm' ? 'grandmaster' : tier.key}
               </span>
 
-              {/* Rating range label — only for current tier */}
+              {/* Range label on current tier; +N to next on previous tiers, etc. */}
               {here && (
                 <span
                   style={{
@@ -108,7 +110,7 @@ export function TierLadder({ rating }: TierLadderProps) {
                     letterSpacing: 0.1,
                   }}
                 >
-                  {tier.max === 9999 ? `${tier.min}+` : tier.min}
+                  {tierRange}
                 </span>
               )}
             </div>

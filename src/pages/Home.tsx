@@ -3,10 +3,30 @@ import { Link } from 'react-router-dom';
 import { Eyebrow } from '@/components/primitives/Eyebrow';
 import { Header } from '@/components/primitives/Header';
 import { ratingTone } from '@/lib/ratingTone';
+import { tierForRating } from '@/lib/tiers';
 import { useUserStore } from '@/store/userStore';
 import { LADDERS } from '@/data/ladders';
 import { PROBLEMS } from '@/data/problems';
 import { USER } from '@/data/user';
+import type { Ladder } from '@/types';
+
+function parseRange(range: string): [number, number] {
+  const lt = range.match(/^<\s*(\d+)/);
+  if (lt) return [0, +lt[1] - 1];
+  const plus = range.match(/^(\d+)\+/);
+  if (plus) return [+plus[1], 9999];
+  const span = range.match(/(\d+)\D+(\d+)/);
+  if (span) return [+span[1], +span[2]];
+  return [0, 9999];
+}
+
+function pickActiveLadder(rating: number): Ladder {
+  const inRange = LADDERS.find((l) => {
+    const [lo, hi] = parseRange(l.range);
+    return rating >= lo && rating <= hi;
+  });
+  return inRange ?? LADDERS.find((l) => l.solved < l.total) ?? LADDERS[0];
+}
 
 // Cursor-spotlight style injection — targets .ed-spot-hero which is added inline
 // on the hero Panel. The ::before overlay is already provided globally via .ed-spot,
@@ -17,8 +37,9 @@ export default function Home() {
   const userRating = useUserStore.getState().user?.rating ?? USER.rating;
   const tone = ratingTone(userRating);
 
-  // Pick the first non-complete ladder; fall back to the first ladder.
-  const ladder = LADDERS.find((l) => l.solved < l.total) ?? LADDERS[0];
+  // Pick the ladder whose range contains the user's current rating.
+  // Falls back to the first incomplete ladder, then to LADDERS[0].
+  const ladder = pickActiveLadder(userRating);
   const pct = Math.round((ladder.solved / ladder.total) * 100);
 
   // Unsolved problems — first 5
@@ -60,7 +81,7 @@ export default function Home() {
       {/* Page header */}
       <Header
         eyebrow={today}
-        title={`${userRating} · Specialist`}
+        title={`${userRating} · ${tierForRating(userRating).label}`}
       />
 
       {/* ── Hero "Continue the climb" card ─────────────────────────────── */}
@@ -158,7 +179,7 @@ export default function Home() {
                 marginBottom: 8,
               }}
             >
-              {ladder.target} ladder
+              {ladder.label} ladder
             </div>
 
             {/* Subtitle */}
